@@ -1,0 +1,16 @@
+# Bulk solver artifacts - regenerated and hash-matched, never committed
+evidence/drat/
+*.drat
+evidence/**/*.cnf
+evidence/*.cnf
+
+# Local scratch
+scratch/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.venv/
