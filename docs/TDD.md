@@ -22,7 +22,11 @@ asserts that boundary from the module source.
 
 ## Data model
 
-No database. On-disk artifacts: ASCII, LF newlines.
+No database. On-disk artifacts: ASCII, LF newlines. **`.gitattributes` pins
+`eol=lf`** - `core.autocrlf` is true on the development machine, so without that
+pin a committed witness would check out CRLF on Windows and LF on Linux and the
+same artifact would hash to two different sha256 values, reddening G2 on one CI
+job only. That was observed on this repo's first commit, not theorized.
 
 | Path | Content | Committed |
 |---|---|---|
@@ -157,7 +161,7 @@ Artifacts referenced by no claim are WARN only - untidiness, not unsoundness.
 | Encoder bug makes a satisfiable instance UNSAT | nobody, until it is public | three-way equivalence tests; G3's two-encoder rule | revert encoder; gate reddens on that claim |
 | Solver killed (OOM, SAC), `rc=1` | operator | rc outside {10,20} -> UNKNOWN, no claim written | re-run; nothing to undo |
 | Numbering drifts after a refactor | CI | golden sha256 per encoder + G3 regeneration | revert, or re-solve and re-record |
-| CRLF newlines on Windows | CI windows job | golden sha256 test | fix the writer |
+| CRLF newlines on Windows, from the writer or from git checkout | CI windows job | golden sha256 test; witness sha256 in G2 | fix the writer; keep `.gitattributes eol=lf` |
 | DRAT proof fills the disk | operator, at once | proofs opt-in, gitignored, size recorded | delete `evidence/drat/`; claim drops to `unsat-dual` |
 | Claim overstates its evidence | gate | G7 | correct the declared level |
 | Anchor transcription error | CI | parity-formula test + G5 double copy | correct both copies |

@@ -1,0 +1,15 @@
+# Every artifact in this repo is hashed. core.autocrlf is true on the
+# development machine, so without this file a committed witness or instance
+# would return CRLF in the working tree on Windows and LF on Linux, and the
+# same artifact would produce two different sha256 values. Pin LF everywhere.
+* text=auto eol=lf
+
+*.txt   text eol=lf
+*.json  text eol=lf
+*.cnf   text eol=lf
+*.md    text eol=lf
+*.py    text eol=lf
+*.yml   text eol=lf
+
+# Proof objects are opaque bytes and are never committed anyway.
+*.drat  binary
