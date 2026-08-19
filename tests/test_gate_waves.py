@@ -20,8 +20,10 @@ from nk2.cubes import CONSTRUCTION
 from tests import _wavefix
 from tests._wavefix import (
     CONFIRM_DIR,
+    CONFIRM_VERDICTS,
     PRIMARY_DIR,
     TRANSCRIPTS,
+    VERDICTS,
     build_wave_repo,
     patch_claim,
     patch_manifest,
@@ -402,6 +404,107 @@ def test_a_wave_that_fails_lends_no_evidence_level(capsys, tmp_path):
     code, out = run(root, capsys)
     assert code != 0, out
     assert any(line.startswith("FAIL W3 ") for line in failures(out)), out
+
+
+# --- a wave is one directory ------------------------------------------------
+#
+# A verdict names no instance and no encoder: it is `{cube, lits, rc, wall_s,
+# drat_sha256, drat_bytes}`, and `lits` is a function of the split alone, so two
+# waves sharing a split write byte-identical verdicts. The only thing that can
+# tie a body of solving to the instance it decided is where it sits, which is
+# why the manifest's own directory - and nothing else under evidence/waves/ -
+# is where that wave's verdicts, transcripts and proofs are read from.
+
+
+def test_confirming_wave_reading_the_primary_wave_verdicts_is_refused(capsys, tmp_path):
+    # The reported exploit, and the one that matters: nk2 writes a manifest with
+    # no solver in the room, so a "second encoder" whose verdicts_dir is the
+    # first encoder's is one file plus somebody else's work. It bought an exact
+    # claim at drat-transcript.
+    root = build_wave_repo(tmp_path / "repo")
+    shutil.rmtree(root / CONFIRM_DIR / "verdicts")
+    patch_claim(root, lambda claim: claim["wave"]["confirm"].update({"verdicts_dir": VERDICTS}))
+    code, out = run(root, capsys)
+    assert code != 0, out
+    assert failures(out), out
+    assert "confirm wave" in out
+
+
+def test_wave_verdicts_from_a_different_wave_are_refused(capsys, tmp_path):
+    # The accident this guards against: a claim block pasted from the previous
+    # encoder's wave, keeping its verdicts_dir. Every verdict is genuine and
+    # decided a different instance.
+    root = build_wave_repo(tmp_path / "repo")
+    patch_claim(root, lambda claim: claim["wave"].update({"verdicts_dir": CONFIRM_VERDICTS}))
+    code, out = run(root, capsys)
+    assert code != 0, out
+    assert any(line.startswith("FAIL W3 ") for line in failures(out)), out
+    assert f"is outside {PRIMARY_DIR}/" in out
+
+
+def test_wave_transcripts_from_a_different_wave_are_refused(capsys, tmp_path):
+    # Every line of the borrowed transcripts is rewritten to name this wave's
+    # own proofs, so the location of the file itself is the only thing wrong.
+    # Without that the proof rule below would be what caught it, and this test
+    # would be testing a rule it does not name.
+    root = build_wave_repo(tmp_path / "repo")
+    _wavefix.write_wave(root, CONFIRM_DIR, "totalizer", False, True)
+    path = root / CONFIRM_DIR / "transcripts.jsonl"
+    lines = [json.loads(raw) for raw in path.read_text(encoding="ascii").splitlines() if raw]
+    for line in lines:
+        line["proof_path_rel"] = line["proof_path_rel"].replace(CONFIRM_DIR, PRIMARY_DIR)
+    path.write_bytes(
+        "".join(json.dumps(line, sort_keys=True) + "\n" for line in lines).encode("ascii")
+    )
+    patch_claim(
+        root,
+        lambda claim: claim["wave"].update({"transcripts": f"{CONFIRM_DIR}/transcripts.jsonl"}),
+    )
+    code, out = run(root, capsys)
+    assert code != 0, out
+    assert any(line.startswith("FAIL W4 ") for line in failures(out)), out
+    assert f"is outside {PRIMARY_DIR}/" in out
+
+
+def test_w4_proof_from_a_different_wave_is_refused(capsys, tmp_path):
+    root = build_wave_repo(tmp_path / "repo")
+    _wavefix.write_wave(root, CONFIRM_DIR, "totalizer", False, True)
+    patch_transcript(
+        root, 0,
+        lambda line: line.update({"proof_path_rel": f"{CONFIRM_DIR}/proofs/cube0000.drat.gz"}),
+    )
+    code, out = run(root, capsys)
+    assert code != 0, out
+    assert any(line.startswith("FAIL W4 ") for line in failures(out)), out
+
+
+def test_manifest_that_does_not_name_its_own_directory_is_refused(capsys, tmp_path):
+    # Two manifests in one directory would let two waves share a body of
+    # verdicts and satisfy the containment rule while doing it, so a wave
+    # directory holds exactly one manifest and it is called manifest.json.
+    root = build_wave_repo(tmp_path / "repo", kind="upper_bound_wave", confirm=None)
+    shutil.move(str(root / PRIMARY_DIR / "manifest.json"), str(root / PRIMARY_DIR / "other.json"))
+    patch_claim(root, lambda claim: claim["wave"].update({"manifest": f"{PRIMARY_DIR}/other.json"}))
+    code, out = run(root, capsys)
+    assert code != 0, out
+    assert any(line.startswith("FAIL W1 ") for line in failures(out)), out
+    assert "manifest.json" in out
+
+
+def test_confirming_wave_in_the_primary_wave_directory_is_refused(capsys, tmp_path):
+    # One directory, one manifest, one encoder: a confirm block that names the
+    # primary's own directory cannot be a second encoding of anything.
+    root = build_wave_repo(tmp_path / "repo")
+    shutil.rmtree(root / CONFIRM_DIR)
+    patch_claim(
+        root,
+        lambda claim: claim["wave"]["confirm"].update(
+            {"manifest": _wavefix.MANIFEST, "verdicts_dir": VERDICTS}
+        ),
+    )
+    code, out = run(root, capsys)
+    assert code != 0, out
+    assert any(line.startswith("FAIL W6 ") for line in failures(out)), out
 
 
 # --- paths and hygiene ------------------------------------------------------

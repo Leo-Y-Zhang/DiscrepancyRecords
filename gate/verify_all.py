@@ -167,6 +167,11 @@ RUNS_DIR = "evidence/runs"
 TRANSCRIPTS_DIR = "evidence/transcripts"
 WAVES_DIR = "evidence/waves"
 EVIDENCE_DIR = "evidence"
+# A wave is one directory, `evidence/waves/<name>/`, and its manifest is the
+# file that names it. Everything else the wave is read from - verdicts,
+# transcripts, proofs - has to sit inside that directory. See wave_directory.
+WAVE_MANIFEST_NAME = "manifest.json"
+WAVE_DIR_DEPTH = len(PurePosixPath(WAVES_DIR).parts) + 1
 # Gitignored wholesale, so a committed artifact never carries one of these.
 # Instances and proofs do, which is why they are checked for containment only.
 # `.gz` is here because a wave's proofs are committed nowhere and stored
@@ -792,6 +797,44 @@ def report_examples(report: Report, rule: str, claim_id: str, problems: list[str
         report.fail(rule, claim_id, f"... and {len(problems) - EXAMPLES} more like it")
 
 
+def wave_directory(
+    root: Path, claim_id: str, label: str, manifest_rel: object, report: Report
+) -> str | None:
+    """W1: the directory whose contents are this wave, named by its manifest.
+
+    A verdict names no instance, no encoder and no N - it is
+    ``{cube, lits, rc, wall_s, drat_sha256, drat_bytes}``, and ``lits`` is a
+    function of the split alone - so two waves that share a split write
+    byte-identical verdicts. Nothing inside the artifacts binds a body of
+    solving to the instance it decided; the only thing that can is where it
+    sits. So a wave is exactly one directory ``evidence/waves/<name>/``, its
+    manifest is the ``manifest.json`` that names that directory, and its
+    verdicts, transcripts and proofs are read from inside it and nowhere else.
+
+    Without this the gate certifies solving that was done for another instance
+    or another encoder: point a second encoder's ``verdicts_dir`` at the first
+    encoder's verdicts and W6 is satisfied by a single manifest file, which nk2
+    writes with no solver in the room. Pinning the file name is what makes one
+    directory mean one wave - two manifests in a directory could otherwise
+    share its verdicts and pass containment while doing it.
+    """
+    try:
+        path = artifact_path(root, manifest_rel, f"{label} manifest", WAVES_DIR)
+    except ArtifactPathError as exc:
+        report.fail("W1", claim_id, str(exc))
+        return None
+    relative = path.relative_to(root).as_posix()
+    parts = PurePosixPath(relative).parts
+    if len(parts) != WAVE_DIR_DEPTH + 1 or parts[-1] != WAVE_MANIFEST_NAME:
+        report.fail(
+            "W1", claim_id,
+            f"{label} manifest {relative!r} is not {WAVES_DIR}/<name>/{WAVE_MANIFEST_NAME}; a "
+            "wave is one directory, and its manifest is the file that names it",
+        )
+        return None
+    return PurePosixPath(relative).parent.as_posix()
+
+
 def read_manifest(
     root: Path, claim_id: str, label: str, manifest_rel: object, report: Report
 ) -> dict | None:
@@ -853,12 +896,16 @@ def read_manifest(
 
 
 def read_verdicts(
-    root: Path, claim_id: str, label: str, verdicts_rel: object,
+    root: Path, claim_id: str, label: str, verdicts_rel: object, wave_dir: str,
     n_cubes: int, report: Report,
 ) -> dict[int, Verdict] | None:
-    """W3, first half: load one verdict per cube id, or say what is wrong."""
+    """W3, first half: load one verdict per cube id, or say what is wrong.
+
+    The verdicts are read from inside ``wave_dir`` - the directory this wave's
+    own manifest names - and from nowhere else under ``evidence/waves/``.
+    """
     try:
-        directory = artifact_path(root, verdicts_rel, f"{label} verdicts directory", WAVES_DIR)
+        directory = artifact_path(root, verdicts_rel, f"{label} verdicts directory", wave_dir)
     except ArtifactPathError as exc:
         report.fail("W3", claim_id, str(exc))
         return None
@@ -908,7 +955,7 @@ def read_verdicts(
 
 
 def check_transcripts(
-    root: Path, claim_id: str, label: str, transcripts_rel: object,
+    root: Path, claim_id: str, label: str, transcripts_rel: object, wave_dir: str,
     verdicts: dict[int, Verdict], n_cubes: int, report: Report,
 ) -> dict[int, tuple[Path, str]] | None:
     """W4: one transcript line per cube, each about this cube's proof.
@@ -916,9 +963,13 @@ def check_transcripts(
     Returns ``{cube: (proof path, proof sha256)}`` when the whole set is sound,
     else None. The gate never opens a proof here - a ``.drat.gz`` is the
     checker's business, and ``--reverify-drat`` is where a checker is run.
+
+    The transcripts file and every proof it names belong to this wave, so both
+    are required inside ``wave_dir``: a line pointing at another wave's proof
+    records a checker reading somebody else's work.
     """
     try:
-        path = artifact_path(root, transcripts_rel, f"{label} transcripts", WAVES_DIR)
+        path = artifact_path(root, transcripts_rel, f"{label} transcripts", wave_dir)
     except ArtifactPathError as exc:
         report.fail("W4", claim_id, str(exc))
         return None
@@ -989,7 +1040,7 @@ def check_transcripts(
         try:
             proof = artifact_path(
                 root, line["proof_path_rel"], f"{label} cube {cube} proof",
-                EVIDENCE_DIR, committed=False,
+                wave_dir, committed=False,
             )
         except ArtifactPathError as exc:
             problems.append(str(exc))
@@ -1078,6 +1129,11 @@ def verify_wave(
     transcripts_rel: object, reverify: bool, report: Report,
 ) -> WaveCheck:
     """W1 to W4 over one wave block."""
+    # First, which directory *is* this wave. Everything below is read from
+    # inside it, so that the solving a claim rests on cannot be another wave's.
+    wave_dir = wave_directory(root, claim_id, label, manifest_rel, report)
+    if wave_dir is None:
+        return WaveCheck(False, None, False)
     manifest = read_manifest(root, claim_id, label, manifest_rel, report)
     if manifest is None:
         return WaveCheck(False, None, False)
@@ -1141,7 +1197,7 @@ def verify_wave(
         return WaveCheck(False, manifest, False)
 
     # W3: every cube id, every one of them rc 20, each over its own literals.
-    verdicts = read_verdicts(root, claim_id, label, verdicts_rel, n_cubes, report)
+    verdicts = read_verdicts(root, claim_id, label, verdicts_rel, wave_dir, n_cubes, report)
     if verdicts is None:
         return WaveCheck(False, manifest, False)
     problems: list[str] = []
@@ -1169,7 +1225,7 @@ def verify_wave(
     if transcripts_rel is None:
         return WaveCheck(True, manifest, False)
     proofs = check_transcripts(
-        root, claim_id, label, transcripts_rel, verdicts, n_cubes, report
+        root, claim_id, label, transcripts_rel, wave_dir, verdicts, n_cubes, report
     )
     if proofs is None:
         return WaveCheck(True, manifest, False)

@@ -102,6 +102,18 @@ proof-checking substitutes for a second encoding. **No wave claim is on record
 in this repository. Nothing here says a wave has completed, and the gate is
 where that will become visible if one ever does.**
 
+A wave is one directory. A verdict file records a cube index, its literals, a
+return code and a proof hash - it names no instance and no encoder, and the
+literals follow from the split alone, so the verdicts of two encodings of the
+same instance are byte-identical. Nothing inside them says which instance they
+decided, so the gate takes the directory the manifest names,
+`evidence/waves/<name>/`, as the wave, and reads that wave's verdicts,
+transcripts and proofs only from inside it. Without that, a "second encoder"
+could be a single `manifest.json` - which this repository's own code writes with
+no solver in the room - nominating the first encoder's verdicts, and an `exact`
+claim would pass on one encoding's work. That was found by a review of this
+gate, and it is where a second pair of eyes earned its keep.
+
 G2, G3 and G4 share one more rule: every path a claim or a transcript records
 must be a plain repo-relative path to an artifact in the directory that kind of
 artifact belongs in. A path that climbs out of the checkout, is absolute, lands
