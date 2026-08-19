@@ -33,6 +33,13 @@ a proofless wave imports at ``unsat-wave`` and transcripts covering part of a
 wave are refused rather than quietly dropped. The summary says which tier the
 source buys and why.
 
+The transcripts are the checker's own record, in the checker's own schema, and
+it keeps bookkeeping of its own there - it deletes a proof once it has read one,
+and says so. Those keys are read and left behind; a key nobody here has heard of
+is refused by name. All of that is checked *before* the wave is checked for
+completeness, because a live campaign refuses for incompleteness for weeks, and
+a transcripts file this tool cannot read must not wait that long to be seen.
+
 The verdicts land as one ``verdicts.jsonl`` - the same objects the per-cube
 files hold, one per line, sorted by cube - because sixteen thousand committed
 files is a repository nobody can clone, browse or review. ``gate/verify_all.py``
@@ -88,6 +95,15 @@ SOURCE_TRANSCRIPT_KEYS = {
     "cube", "ok", "tool", "tool_rc", "verdict", "drat_sha256", "drat_bytes",
     "cnf_sha256", "check_wall_s",
 }
+# Bookkeeping the checker keeps for itself, beside the fields this tool reads.
+# `proof_pruned` says it deleted that cube's `.drat.gz` once it had read it -
+# which is the whole reason the transcript is the record and the proof is not -
+# and it is evidence of nothing either reader checks, so a line carrying it is
+# read and the key is left behind rather than the file being refused. The set is
+# enumerated and not a free-for-all: a key nobody here has heard of is a checker
+# whose schema this tool would be guessing at, and it is refused *by name*.
+PRUNED_KEY = "proof_pruned"
+SOURCE_TRANSCRIPT_EXTRA_KEYS = {PRUNED_KEY}
 VERIFIED = "s VERIFIED"
 
 # Where a cube's proof belongs once its wave is in the repository. Nothing is
@@ -310,17 +326,27 @@ def check_complete(verdicts: dict[int, dict], split: list[int], n_cubes: int) ->
 # --- the transcripts --------------------------------------------------------
 
 
-def load_transcripts(
-    source: Path, name: str, verdicts: dict[int, dict], n_cubes: int
-) -> list[dict] | None:
-    """The checker's record, normalised into the shape W4 reads.
+def transcript_keys_are_readable(keys: set[str]) -> bool:
+    """Whether one line is written in the checker's schema or the gate's."""
+    if keys == TRANSCRIPT_KEYS:
+        return True
+    return SOURCE_TRANSCRIPT_KEYS <= keys <= SOURCE_TRANSCRIPT_KEYS | SOURCE_TRANSCRIPT_EXTRA_KEYS
+
+
+def read_transcript_lines(source: Path, n_cubes: int) -> dict[int, dict] | None:
+    """The checker's file, parsed and keyed by cube. Shape only.
 
     Returns None when the source carries no transcripts - a wave may stand on
     solver verdicts alone, and then it earns ``unsat-wave`` rather than
     ``wave-drat-verified``.
 
-    Every fact in the output comes from the source except ``proof_path_rel``,
-    which is where this wave's proof for that cube belongs in the repository.
+    This is separated from the checking below, and run *before* the wave is
+    checked for completeness, because otherwise a transcripts file this tool
+    cannot read is invisible until the wave finishes: every dry run of a live
+    campaign refuses for incompleteness, and does so for weeks, so a checker
+    schema that would refuse the import of all 16384 cubes is never reached.
+    That is not hypothetical - it is how a live wave came to be writing a
+    ``proof_pruned`` key nobody had ever run this tool against.
     """
     path = source / TRANSCRIPTS_NAME
     if not path.is_file():
@@ -342,12 +368,15 @@ def load_transcripts(
         except ValueError as exc:
             problems.append(f"{where} will not parse: {exc}")
             continue
-        if not isinstance(line, dict) or set(line) not in (
-            SOURCE_TRANSCRIPT_KEYS, TRANSCRIPT_KEYS
-        ):
+        if not isinstance(line, dict) or not transcript_keys_are_readable(set(line)):
+            keys = set(line) if isinstance(line, dict) else set()
+            unknown = sorted(keys - SOURCE_TRANSCRIPT_KEYS - SOURCE_TRANSCRIPT_EXTRA_KEYS)
+            missing = sorted(SOURCE_TRANSCRIPT_KEYS - keys)
             problems.append(
-                f"{where} keys are neither the checker's {sorted(SOURCE_TRANSCRIPT_KEYS)} "
-                f"nor the gate's {sorted(TRANSCRIPT_KEYS)}"
+                f"{where} is written in neither schema: unknown key(s) {unknown}, missing "
+                f"{missing}. The checker writes {sorted(SOURCE_TRANSCRIPT_KEYS)} and may add "
+                f"{sorted(SOURCE_TRANSCRIPT_EXTRA_KEYS)}; the gate's form is "
+                f"{sorted(TRANSCRIPT_KEYS)}"
             )
             continue
         cube = line["cube"]
@@ -360,7 +389,18 @@ def load_transcripts(
         lines[cube] = line
     if problems:
         fail("the source transcripts are not readable:\n  " + examples(problems))
+    return lines
 
+
+def normalise_transcripts(
+    lines: dict[int, dict], name: str, verdicts: dict[int, dict], n_cubes: int
+) -> list[dict]:
+    """The checker's record, normalised into the shape W4 reads.
+
+    Every fact in the output comes from the source except ``proof_path_rel``,
+    which is where this wave's proof for that cube belongs in the repository.
+    """
+    problems: list[str] = []
     normalised: list[dict] = []
     uncovered: list[int] = []
     for cube in range(n_cubes):
@@ -498,7 +538,9 @@ def tier(manifest: dict, transcripts: list[dict] | None) -> str:
     )
 
 
-def summarise(manifest: dict, verdicts: dict[int, dict], transcripts: list[dict] | None) -> str:
+def summarise(
+    manifest: dict, verdicts: dict[int, dict], transcripts: list[dict] | None, pruned: int = 0
+) -> str:
     n_cubes = int(manifest["n_cubes"])
     walls = [v["wall_s"] for v in verdicts.values() if isinstance(v["wall_s"], (int, float))]
     unrecorded = n_cubes - len(walls)
@@ -535,6 +577,14 @@ def summarise(manifest: dict, verdicts: dict[int, dict], transcripts: list[dict]
         lines.append(
             f"  checked:  {len(transcripts)} transcript line(s), every one {VERIFIED!r}"
         )
+        # Said out loud because the key that carries it does not cross: a pruned
+        # proof is gone from the campaign's disk, so nothing can ever re-run a
+        # checker over that cube, and the transcript is the only record left.
+        if pruned:
+            lines.append(
+                f"            {pruned} of them record the checker having deleted the proof "
+                "once it had read it; those cubes cannot be re-checked from this source"
+            )
     lines.append(tier(manifest, transcripts))
     return "\n".join(lines)
 
@@ -646,9 +696,18 @@ def main(argv: list[str] | None = None) -> int:
                 f"--expect-cubes {args.expect_cubes} but the manifest says {n_cubes}; one of the "
                 "two is about a different wave"
             )
+        # The transcripts are read for shape here, ahead of the verdicts, so
+        # that a checker schema this tool cannot read is reported on the first
+        # dry run rather than sitting behind the incompleteness of a wave that
+        # will be incomplete for weeks.
+        lines = read_transcript_lines(source, n_cubes)
         verdicts = load_verdicts(source, n_cubes)
         check_complete(verdicts, list(manifest["split_vars"]), n_cubes)
-        transcripts = load_transcripts(source, args.name, verdicts, n_cubes)
+        transcripts = (
+            None if lines is None
+            else normalise_transcripts(lines, args.name, verdicts, n_cubes)
+        )
+        pruned = sum(1 for line in (lines or {}).values() if line.get(PRUNED_KEY) is True)
         manifest_bytes = (source / MANIFEST_NAME).read_bytes()
         if b"\r" in manifest_bytes:
             fail("manifest.json holds a CR byte; every artifact in this repository is LF")
@@ -670,7 +729,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"{prefix} {dest.relative_to(root).as_posix()}/:")
     for path, payload in payloads:
         print(f"  {path.relative_to(root).as_posix()}  ({len(payload)} bytes)")
-    print(summarise(manifest, verdicts, transcripts))
+    print(summarise(manifest, verdicts, transcripts, pruned))
     if transcripts is not None:
         print(
             "  note:     transcript lines carry the checker's own verdict, sha256 and byte "

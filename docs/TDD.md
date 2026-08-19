@@ -376,6 +376,13 @@ summary says which tier the source supports and why, so that a confirmation
 wave - which looks exactly like a certified one in a directory listing - cannot
 be mistaken for one without running the gate to find out.
 
+**Optional is not unchecked.** A cube that records a digest records a real
+64-hex one and the byte count that goes with it, so a hash that is not a hash, a
+size that is not a number, and half a pair either way round - a hash with no
+size, or a size with no hash - are each refused naming the cube. Absent *and*
+absent is the only shape that means "this cube kept no proof", and it is the
+only one waved through.
+
 That the hash has to be a digest and not merely agree is the one place the two
 readers had drifted apart, and it cost a wave. A verdict-only campaign records
 `drat_sha256: null`, a checker wrapper run over it copies that null into every
@@ -413,8 +420,23 @@ cube order, and two imports of either are byte-identical. The
 manifest is copied byte for byte (and refused if it holds a CR, since every
 artifact here is LF). The checker's transcript schema is *not* the gate's -
 it records `{cube, ok, tool, tool_rc, verdict, drat_sha256, drat_bytes,
-cnf_sha256, check_wall_s}`, which is what a checker knows - so it is normalised
-into `{cube, drat_sha256, drat_bytes, proof_path_rel, checker, verdict}`. Every
+cnf_sha256, check_wall_s}`, which is what a checker knows, and it **may add
+`proof_pruned`**: the live checker deletes a cube's `.drat.gz` once it has read
+it, which is the whole reason the transcript is the record and the proof is not,
+and it says so in the line. That is bookkeeping neither reader checks, so the
+line is read and the key is left behind, with the count of pruned proofs said
+out loud in the summary - those cubes can never be re-checked from that source.
+The extra keys are **enumerated, not tolerated**: a key nobody here has heard of
+is a checker whose schema this tool would be guessing at, so it is refused, and
+the refusal *names the key* rather than printing two sorted lists to diff by eye.
+The transcripts are read for shape - keys, cube ids, duplicates - **before** the
+verdicts are checked for completeness, because a live campaign's every dry run
+refuses for incompleteness and does so for weeks: a transcripts file the tool
+cannot read would then be invisible until the last of 16384 cubes landed. That
+is not hypothetical. A checker started mid-session began writing `proof_pruned`,
+and with the old order nothing would have reported it until the wave finished.
+The normalised form is `{cube, drat_sha256, drat_bytes, proof_path_rel, checker,
+verdict}`. Every
 field of that comes from the source except `proof_path_rel`, which is where
 this wave's proof for that cube belongs, `evidence/waves/<name>/proofs/`. That
 asserts no file is present, and none is: W4 checks transcripts rather than
@@ -456,6 +478,7 @@ Import a wave, then run the gate; nothing is evidence until that exits 0.
 | A verdict-only wave (no proof hashes) is run through a checker wrapper and imported as drat-verified | the gate, one step later than it should - W4 wants a digest, and `null == null` had satisfied the import | `import_wave` demands a digest where W4 demands one, so the wave is refused rather than written | it wrote nothing; before this it wrote a wave that had to be deleted by hand, since a second import is refused |
 | A wave is solved with `--no-proof`, so no verdict carries a digest, and a resumed one carries them for only some cubes | the operator, when a complete and honest wave is refused | it was not caught by design: run against `scratch/wave274` both readers demanded six keys and refused 75 of 117 verdicts | the pair is optional per cube in the gate and the import alike; such a wave imports and verifies at `unsat-wave` |
 | A checker is run over a mixed wave and leaves lines only for the cubes that kept a proof | nobody - a short transcripts file looks like a whole one, and the wave "was checked" | import refuses partial coverage and says how many cubes have no line; W4 fails the claim rather than downgrading it | check the remaining cubes, or import with no transcripts and stand at `unsat-wave` |
+| The checker writes a key of its own the import tool has never seen (`proof_pruned`, which says it deleted the proof after reading it) | nobody, until the wave finishes - the transcripts used to be read only after the completeness check, which refuses for weeks while a campaign runs | the enumerated extra keys are accepted and dropped; anything else is refused *by name*, and the transcripts are read for shape before the verdicts are counted | add the key to the enumerated set if it is bookkeeping, or to the schema if it is evidence; nothing was written either way |
 | An import is pointed at a name that is a path (`--name ../x`) | nobody | the name must be a plain directory name, checked before any path is built | nothing to undo |
 
 ## Rollback
@@ -530,7 +553,13 @@ wave whose verdicts carry no proof keys at all and a mixed wave carrying them
 for half its cubes each verify at `unsat-wave`, the same wave declaring
 `wave-drat-verified` fails G7, and a checker's line with no digest over a
 verdict with no digest fails W4 rather than agreeing with it - two absences
-compare equal, which is exactly why W4 demands a digest and not agreement. Each of the four
+compare equal, which is exactly why W4 demands a digest and not agreement. That
+case only tests what it is named for if the line's *byte count* agrees with the
+verdict too: while the fixture wrote a real size beside an empty digest, W4
+failed on the size, and the digest half of the rule could be deleted with the
+whole suite green. So the fixture now copies both proof fields from the verdict,
+the test asserts that before it runs the gate, and the size half has a case of
+its own - a line whose digest matches and whose byte count does not. Each of the four
 level-earning shapes is asserted to reach its tier exactly, and to fail G7 one
 tier higher. `write_cube_cnf` is checked byte for byte against `write_cnf` fed
 the same clauses. `--reverify-drat` over a wave is driven by a **stub checker**
@@ -572,7 +601,15 @@ that kept a proof are refused with a message naming how many cubes have no
 line; transcripts over a wave that kept no digests are refused whether the keys
 are absent or present and null; and the summary's tier line is read back and
 asserted to name the level and the reason, since a tier nobody prints is a tier
-the operator finds out about from the gate. Then four properties: the source is byte-identical afterwards,
+the operator finds out about from the gate. The optional pair is checked when it
+is there, one case each: a digest that is not hex, one an octet short, a byte
+count that is a string, and half a pair each way round. The checker's own schema
+gets three: its `proof_pruned` line imports and reaches `wave-drat-verified`
+with the key dropped from what lands and counted in the summary, a key nobody
+has heard of is refused *naming the key*, and the same unknown key over a wave
+that is still solving is refused for the key and not merely for the
+incompleteness - which is the order the tool reads them in, and the reason it
+does. Then four properties: the source is byte-identical afterwards,
 no `.drat.gz` is anywhere in the repository, `--dry-run` writes nothing at all,
 and two imports of one source produce identical bytes.
 
@@ -665,6 +702,12 @@ test never observed failing is decoration):
 | M63 | import drops the cubes a transcripts file does not cover instead of refusing | the part-covered mixed source, which would otherwise import declaring `wave-drat-verified` |
 | M64 | verdict reader treats a missing required key as an absent proof key | the `wall_s`-removed line fixture |
 | M65 | import's summary names a tier from whether a transcripts file exists rather than from what it covers, or prints none at all | the tier-line tests over a checked and a proofless source |
+| M66 | W4 checks a transcript's hash for equality only, not that it *is* a digest (`is_hex` dropped) | the proofless-wave-with-transcripts fixture, whose nulls agree - and only if its transcript's byte count agrees with the verdict too, or W4 fails on the size and the digest rule is untested |
+| M67 | W4 drops the transcript-against-verdict byte-count comparison | the disagreeing-proof-size fixture; the digest fixture above does **not** catch it, which is why both halves have a case |
+| M68 | import stops validating a verdict's recorded digest, so a present digest is never checked | the not-a-digest, too-short and size-not-a-number verdict sources |
+| M69 | import treats half a proof pair as no proof at all (`sha is None and size is None` -> `or`) | the sha-without-size and size-without-sha verdict sources |
+| M70 | import demands the checker's nine keys exactly, so a line carrying `proof_pruned` is refused | the pruned-transcript source, which is what the live checker writes |
+| M71 | import reads the transcripts only after the completeness check | the unreadable-transcripts-over-an-unfinished-wave source, where the incompleteness message would otherwise mask them |
 
 ## CI and environment
 

@@ -234,11 +234,16 @@ def write_wave(
         # mtime=0 so the fixture is byte-identical from one run to the next.
         with gzip.GzipFile(filename="", mode="wb", fileobj=proof_path.open("wb"), mtime=0) as out:
             out.write(proof)
+        # Both proof fields are copied from the verdict, including when the
+        # verdict kept none: a checker wrapper run over a proofless wave has
+        # nothing else to write there, and a fixture that put a real byte count
+        # beside an empty digest would fail W4 on the size and prove nothing
+        # about the rule that a transcript's hash has to *be* a hash.
         lines.append(
             {
                 "cube": index,
                 "drat_sha256": proof_sha,
-                "drat_bytes": len(proof),
+                "drat_bytes": verdicts[index].get("drat_bytes"),
                 "proof_path_rel": proof_rel,
                 "checker": "fixture placeholder - no checker ran",
                 "verdict": "s VERIFIED",
@@ -292,6 +297,7 @@ def write_source_wave(
     verdicts_form: str = "dir",
     cube_order: list[int] | None = None,
     sort_keys: bool = True,
+    transcript_extras: dict | None = None,
 ) -> Path:
     """Write a complete off-repo wave in the layout a campaign leaves behind.
 
@@ -311,6 +317,10 @@ def write_source_wave(
       to record: ``DIGESTS_ABSENT`` leaves the pair out, ``DIGESTS_NULL`` writes
       it empty, and a collection of cube ids is the mixed wave a campaign
       interrupted and resumed in the other mode leaves behind.
+    * ``transcript_extras`` - keys the checker writes for itself beside the ones
+      the import tool reads. The live checker records ``proof_pruned``, because
+      it deletes each ``.drat.gz`` once it has read it, and a tool that had
+      never heard of that key refused the whole file.
     """
     if verdicts_form not in VERDICT_FORMS:
         raise ValueError(
@@ -351,6 +361,7 @@ def write_source_wave(
                 "drat_bytes": verdict.get("drat_bytes"),
                 "cnf_sha256": cube_instance_sha(encoder, symmetry_break, index),
                 "check_wall_s": 0.02,
+                **(transcript_extras or {}),
             }
         )
     if verdicts_form == "jsonl":

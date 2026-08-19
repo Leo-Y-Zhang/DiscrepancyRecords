@@ -33,6 +33,7 @@ from tests._wavefix import (
     patch_transcript,
     patch_verdict,
     read_json,
+    read_jsonl,
     verdict_lines,
     write_verdict_lines,
 )
@@ -205,6 +206,19 @@ def test_w4_transcript_proof_hash_that_disagrees_with_the_verdict_is_refused(cap
     code, out = run(root, capsys)
     assert code != 0, out
     assert any(line.startswith("FAIL W4 ") for line in failures(out)), out
+
+
+def test_w4_transcript_and_verdict_disagreeing_on_the_proof_size_is_refused(capsys, tmp_path):
+    # The size half of the same rule, and it needs a case of its own: the digest
+    # test above passes with this comparison deleted, and the digest comparison
+    # can be deleted without the test above noticing either. Two halves, two
+    # tests, or half the rule that makes optional proof keys safe is unpinned.
+    root = build_wave_repo(tmp_path / "repo")
+    patch_transcript(root, 1, lambda line: line.update({"drat_bytes": line["drat_bytes"] + 1}))
+    code, out = run(root, capsys)
+    assert code != 0, out
+    assert any(line.startswith("FAIL W4 ") for line in failures(out)), out
+    assert "proof size" in out
 
 
 def test_w4_transcript_that_does_not_say_verified_is_refused(capsys, tmp_path):
@@ -494,6 +508,13 @@ def test_w4_transcript_with_no_digest_over_a_wave_with_no_digest_is_refused(caps
         proof_digests=DIGESTS_ABSENT,
         evidence_level="unsat-wave",
     )
+    # Every other field of the line agrees with the verdict, byte count
+    # included, so the digest rule is the only thing that can refuse this. Left
+    # unasserted it was not: the fixture wrote a real byte count beside an empty
+    # digest, W4 failed on the size, and the rule this test is named for could
+    # be deleted with the suite green.
+    line = read_jsonl(root / TRANSCRIPTS)[0]
+    assert line["drat_sha256"] is None and line["drat_bytes"] is None
     code, out = run(root, capsys)
     assert code != 0, out
     assert any(line.startswith("FAIL W4 ") for line in failures(out)), out

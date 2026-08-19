@@ -348,6 +348,63 @@ def test_the_summary_names_the_tier_the_source_supports_and_why(capsys, tmp_path
     assert "transcript" in line
 
 
+# --- the checker's own schema -----------------------------------------------
+#
+# The transcripts a wave arrives with are written by the checker, for itself,
+# and it keeps bookkeeping the gate's schema has no place for: it deletes each
+# `.drat.gz` once it has read it - which is the whole reason transcripts are the
+# record and proofs are not - and records that it did. A tool that demands the
+# nine keys it was written against refuses the live checker's file wholesale.
+
+
+def test_the_checkers_pruned_transcript_is_read_and_the_bookkeeping_dropped(capsys, tmp_path):
+    root = make_repo(tmp_path)
+    source = write_source_wave(tmp_path / "source", transcript_extras={"proof_pruned": True})
+    assert "proof_pruned" in read_jsonl(source / "transcripts.jsonl")[0]
+
+    assert run_import(root, source) == 0
+    out = capsys.readouterr().out
+    assert "wave-drat-verified" in tier(out)
+    # What crosses is the gate's six keys; the checker's own bookkeeping is not
+    # evidence of anything either reader checks, so it is said out loud in the
+    # summary and left behind rather than smuggled into the committed record.
+    written = read_jsonl(root / WAVE_DIR / "transcripts.jsonl")
+    assert all("proof_pruned" not in line for line in written)
+    assert f"{N_CUBES} of them" in out and "deleted" in out
+
+    claim = fragments(out)["this wave alone (upper_bound_wave)"]
+    write_json(root / "claims" / "CLAIMS.json", {"schema": "nk2.claims.v1", "claims": [claim]})
+    assert gate_main(["--root", str(root)]) == 0, capsys.readouterr().out
+
+
+def test_a_transcript_key_the_tool_does_not_know_is_refused_and_named(capsys, tmp_path):
+    # Only the keys this tool has been shown are accepted - a checker whose
+    # schema it does not know is one it would be guessing about - but the
+    # refusal has to name the key, or the operator is left diffing two sorted
+    # lists by eye to find out which of ten it was.
+    root = make_repo(tmp_path)
+    source = write_source_wave(tmp_path / "source", transcript_extras={"quantum_ok": True})
+    assert run_import(root, source) == 1
+    err = capsys.readouterr().err
+    assert "quantum_ok" in err
+    assert not (root / WAVE_DIR).exists()
+
+
+def test_an_unreadable_transcript_is_refused_while_the_wave_is_still_running(capsys, tmp_path):
+    # Every dry run of a live campaign refuses for incompleteness, and does so
+    # for weeks. If the transcripts are only read after that check passes, a
+    # checker schema this tool cannot read stays invisible until the last cube
+    # lands - which is how a live wave came to be writing a key that would have
+    # refused the import of all 16384 of them.
+    root = make_repo(tmp_path)
+    source = write_source_wave(tmp_path / "source", transcript_extras={"quantum_ok": True})
+    (source / "verdicts" / "v00002.json").unlink()
+    assert run_import(root, source, "--dry-run") == 1
+    err = capsys.readouterr().err
+    assert "quantum_ok" in err
+    assert not (root / WAVE_DIR).exists()
+
+
 # --- refusals ---------------------------------------------------------------
 
 
@@ -420,6 +477,34 @@ def test_a_transcript_digest_the_verdict_never_recorded_is_refused(capsys, tmp_p
     assert run_import(root, source) == 1
     err = capsys.readouterr().err
     assert "cube 1" in err and "sha256" in err
+    assert not (root / WAVE_DIR).exists()
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda v: v.update({"drat_sha256": "z" * 64}),
+        lambda v: v.update({"drat_sha256": "a" * 63}),
+        lambda v: v.update({"drat_bytes": "1234"}),
+        lambda v: v.pop("drat_bytes"),
+        lambda v: v.pop("drat_sha256"),
+    ],
+    ids=["not-hex", "too-short", "size-not-a-number", "sha-without-size", "size-without-sha"],
+)
+def test_a_verdict_recording_half_a_proof_or_no_digest_is_refused(capsys, tmp_path, mutate):
+    # Optional is not unchecked. A cube that says it kept a proof has to say
+    # what that proof hashed to and how big it was; a digest that is not a
+    # digest, or half the pair, is a cube claiming a proof nobody can identify.
+    # Absent-and-absent is the only shape that means "no proof was kept", and it
+    # is the one this leaves alone - the wave then stands at unsat-wave.
+    root = make_repo(tmp_path)
+    source = write_source_wave(
+        tmp_path / "source", with_transcripts=False, with_proofs=False
+    )
+    patch_source_verdict(source, 1, mutate)
+    assert run_import(root, source) == 1
+    err = capsys.readouterr().err
+    assert "cube 1" in err
     assert not (root / WAVE_DIR).exists()
 
 
