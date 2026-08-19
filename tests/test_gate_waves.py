@@ -21,14 +21,18 @@ from tests import _wavefix
 from tests._wavefix import (
     CONFIRM_DIR,
     CONFIRM_VERDICTS,
+    CONFIRM_VERDICTS_JSONL,
     PRIMARY_DIR,
     TRANSCRIPTS,
     VERDICTS,
+    VERDICTS_JSONL,
     build_wave_repo,
     patch_claim,
     patch_manifest,
     patch_transcript,
     patch_verdict,
+    verdict_lines,
+    write_verdict_lines,
 )
 
 
@@ -640,6 +644,171 @@ def test_wave_claim_schema_is_checked_before_anything_reads_it(capsys, tmp_path)
     code, out = run(root, capsys)
     assert code != 0, out
     assert any(line.startswith("FAIL G1 ") for line in failures(out)), out
+
+
+# --- consolidated verdicts --------------------------------------------------
+#
+# A wave of sixteen thousand cubes cannot be committed as sixteen thousand
+# files, so `verdicts_dir` may instead name one `.jsonl` holding the same
+# objects, one per line. Every W3 rule has to hold identically over it: the same
+# cube ids, the same rc 20, the same literals, and the same refusal of a
+# duplicate, an extra or a line that will not parse. These tests are the
+# directory-form ones above, repeated against the consolidated shape.
+
+
+def test_a_complete_confirmed_wave_in_the_consolidated_form_passes(capsys, tmp_path):
+    root = build_wave_repo(tmp_path / "repo", verdicts_form="jsonl")
+    assert not (root / PRIMARY_DIR / "verdicts").exists()
+    assert (root / VERDICTS_JSONL).is_file()
+    code, out = run(root, capsys)
+    assert code == 0, out
+    assert "FAIL" not in out
+    assert "WARN" not in out, out
+
+
+@pytest.mark.parametrize(
+    ("confirm", "transcripts", "level"),
+    [
+        (None, False, "unsat-wave"),
+        (None, True, "wave-drat-verified"),
+        ("wave", False, "unsat-dual"),
+        ("wave", True, "drat-transcript"),
+    ],
+    ids=["bare", "proofs", "confirmed", "confirmed-proofs"],
+)
+def test_consolidated_verdicts_earn_the_same_levels(
+    capsys, tmp_path, confirm, transcripts, level
+):
+    # The form the verdicts are stored in is bookkeeping. It must not move a
+    # claim up or down the ladder.
+    root = build_wave_repo(
+        tmp_path / "repo",
+        kind="upper_bound_wave",
+        confirm=confirm,
+        transcripts=transcripts,
+        evidence_level=level,
+        verdicts_form="jsonl",
+    )
+    code, out = run(root, capsys)
+    assert code == 0, out
+    assert "understates" not in out, out
+
+    higher = LEVELS[LEVELS.index(level) + 1]
+    patch_claim(root, lambda claim: claim.update({"evidence_level": higher}))
+    code, out = run(root, capsys)
+    assert code != 0, out
+    assert any(line.startswith("FAIL G7 ") for line in failures(out)), out
+
+
+def test_w3_jsonl_missing_cube_is_refused(capsys, tmp_path):
+    root = build_wave_repo(tmp_path / "repo", verdicts_form="jsonl")
+    write_verdict_lines(root, [line for line in verdict_lines(root) if line["cube"] != 2])
+    code, out = run(root, capsys)
+    assert code != 0, out
+    assert any(line.startswith("FAIL W3 ") for line in failures(out)), out
+    assert "cube 2" in out
+
+
+def test_w3_jsonl_cube_without_a_return_code_is_refused(capsys, tmp_path):
+    root = build_wave_repo(tmp_path / "repo", verdicts_form="jsonl")
+    patch_verdict(root, 1, lambda v: v.update({"rc": None}))
+    code, out = run(root, capsys)
+    assert code != 0, out
+    assert any(line.startswith("FAIL W3 ") for line in failures(out)), out
+
+
+def test_w3_jsonl_tampered_cube_literals_are_refused(capsys, tmp_path):
+    root = build_wave_repo(tmp_path / "repo", verdicts_form="jsonl")
+    patch_verdict(root, 3, lambda v: v.update({"lits": [2, -5]}))
+    code, out = run(root, capsys)
+    assert code != 0, out
+    assert any(line.startswith("FAIL W3 ") for line in failures(out)), out
+    assert "lits" in out or "literals" in out
+
+
+def test_w3_jsonl_duplicate_cube_line_is_refused(capsys, tmp_path):
+    # The consolidated file is appended to as cubes land, so a wave that was
+    # resumed can hold a cube twice. Two lines for one cube means one of them is
+    # about a run nobody can identify, and a set with a duplicate is not a
+    # partition on record.
+    root = build_wave_repo(tmp_path / "repo", verdicts_form="jsonl")
+    lines = verdict_lines(root)
+    write_verdict_lines(root, lines + [lines[1]])
+    code, out = run(root, capsys)
+    assert code != 0, out
+    assert any(line.startswith("FAIL W3 ") for line in failures(out)), out
+    assert "more than one verdict" in out
+
+
+def test_w3_jsonl_cube_id_beyond_the_cube_count_is_refused(capsys, tmp_path):
+    root = build_wave_repo(tmp_path / "repo", verdicts_form="jsonl")
+    lines = verdict_lines(root)
+    extra = dict(lines[0])
+    extra["cube"] = len(lines)
+    write_verdict_lines(root, lines + [extra])
+    code, out = run(root, capsys)
+    assert code != 0, out
+    assert any(line.startswith("FAIL W3 ") for line in failures(out)), out
+    assert "outside 0.." in out
+
+
+@pytest.mark.parametrize(
+    "junk", ['{"cube": 2, "rc"', "", "   "], ids=["truncated", "blank", "whitespace"]
+)
+def test_w3_jsonl_line_that_is_not_a_verdict_is_refused_not_skipped(capsys, tmp_path, junk):
+    # Every cube is present and correct, and one extra line is not a verdict.
+    # A reader that skips what it cannot parse passes this wave and says
+    # nothing, which is how a truncated write - the ordinary way a file ends
+    # when a machine dies mid-append - stops being visible. The line count is
+    # part of the record, so an unreadable line is a failure and never a skip.
+    root = build_wave_repo(tmp_path / "repo", verdicts_form="jsonl")
+    path = root / VERDICTS_JSONL
+    path.write_bytes(path.read_bytes() + (junk + "\n").encode("ascii"))
+    code, out = run(root, capsys)
+    assert code != 0, out
+    assert any(line.startswith("FAIL W3 ") for line in failures(out)), out
+
+
+def test_w3_jsonl_line_with_the_wrong_keys_is_refused(capsys, tmp_path):
+    root = build_wave_repo(tmp_path / "repo", verdicts_form="jsonl")
+    lines = verdict_lines(root)
+    lines[0].pop("wall_s")
+    write_verdict_lines(root, lines)
+    code, out = run(root, capsys)
+    assert code != 0, out
+    assert any(line.startswith("FAIL W3 ") for line in failures(out)), out
+
+
+def test_w3_jsonl_verdicts_from_a_different_wave_are_refused(capsys, tmp_path):
+    # The manifest-binding rule is the same rule in the consolidated form: a
+    # verdict names no instance, so where the file sits is the only thing that
+    # says which wave it is about.
+    root = build_wave_repo(tmp_path / "repo", verdicts_form="jsonl")
+    patch_claim(root, lambda claim: claim["wave"].update({"verdicts_dir": CONFIRM_VERDICTS_JSONL}))
+    code, out = run(root, capsys)
+    assert code != 0, out
+    assert any(line.startswith("FAIL W3 ") for line in failures(out)), out
+    assert f"is outside {PRIMARY_DIR}/" in out
+
+
+def test_w3_jsonl_that_does_not_exist_is_refused(capsys, tmp_path):
+    root = build_wave_repo(tmp_path / "repo", verdicts_form="jsonl")
+    (root / VERDICTS_JSONL).unlink()
+    code, out = run(root, capsys)
+    assert code != 0, out
+    assert any(line.startswith("FAIL W3 ") for line in failures(out)), out
+
+
+def test_w3_verdicts_named_jsonl_that_are_a_directory_are_refused(capsys, tmp_path):
+    # `verdicts.jsonl` is read as the consolidated file, and a directory of that
+    # name is not one. Deciding the form from the recorded name rather than from
+    # what happens to be on disk keeps one claim readable one way.
+    root = build_wave_repo(tmp_path / "repo", kind="upper_bound_wave", confirm=None)
+    shutil.move(str(root / PRIMARY_DIR / "verdicts"), str(root / PRIMARY_DIR / "verdicts.jsonl"))
+    patch_claim(root, lambda claim: claim["wave"].update({"verdicts_dir": VERDICTS_JSONL}))
+    code, out = run(root, capsys)
+    assert code != 0, out
+    assert any(line.startswith("FAIL W3 ") for line in failures(out)), out
 
 
 def test_a_claim_with_no_wave_key_still_verifies(capsys, tmp_path):

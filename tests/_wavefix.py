@@ -26,7 +26,7 @@ import tempfile
 from pathlib import Path
 
 from nk2 import encode_seqcount, encode_subsets, encode_totalizer
-from nk2.cubes import CONSTRUCTION, cube_clauses, cube_literals, cubes_sha256
+from nk2.cubes import CONSTRUCTION, cube_clauses, cube_literals, cubes_sha256, write_cube_cnf
 from nk2.dimacs import write_cnf
 from nk2.witness import write_witness
 from tests._minisolve import extends
@@ -42,10 +42,17 @@ PRIMARY_DIR = "evidence/waves/k3_l2_N9_seqcount"
 CONFIRM_DIR = "evidence/waves/k3_l2_N9_totalizer"
 MANIFEST = f"{PRIMARY_DIR}/manifest.json"
 VERDICTS = f"{PRIMARY_DIR}/verdicts"
+VERDICTS_JSONL = f"{PRIMARY_DIR}/verdicts.jsonl"
 TRANSCRIPTS = f"{PRIMARY_DIR}/transcripts.jsonl"
 PROOFS = f"{PRIMARY_DIR}/proofs"
 CONFIRM_MANIFEST = f"{CONFIRM_DIR}/manifest.json"
 CONFIRM_VERDICTS = f"{CONFIRM_DIR}/verdicts"
+CONFIRM_VERDICTS_JSONL = f"{CONFIRM_DIR}/verdicts.jsonl"
+
+# The two shapes a wave's verdicts come in. `dir` is one JSON file per cube;
+# `jsonl` is the same objects consolidated one per line, which is what a wave of
+# sixteen thousand cubes has to be committed as.
+VERDICT_FORMS = ("dir", "jsonl")
 
 # A syntactically valid commit that is deliberately the null one: the gate
 # cannot check that a snapshot commit exists (it runs on a checkout that may not
@@ -93,50 +100,85 @@ def refute_every_cube(encoder: str, symmetry_break: bool) -> None:
             )
 
 
+def manifest_document(encoder: str, symmetry_break: bool) -> dict:
+    """The manifest a wave over this fixture's split is entitled to."""
+    return {
+        "schema": "cube-wave.v2",
+        "N": N,
+        "k": K,
+        "l": L,
+        "encoder": encoder,
+        "symmetry_break": symmetry_break,
+        "snapshot_commit": NULL_COMMIT,
+        "base": base_instance(encoder, symmetry_break),
+        "split_vars": list(SPLIT),
+        "n_cubes": N_CUBES,
+        "cubes_sha256": cubes_sha256(SPLIT),
+        "cube_construction": CONSTRUCTION,
+    }
+
+
+def placeholder_proof(index: int) -> bytes:
+    return f"c placeholder proof for cube {index}\n0\n".encode("ascii")
+
+
+def verdict_document(index: int) -> dict:
+    proof = placeholder_proof(index)
+    return {
+        "cube": index,
+        "lits": cube_literals(SPLIT, index),
+        "rc": 20,
+        "wall_s": 0.01,
+        "drat_sha256": hashlib.sha256(proof).hexdigest(),
+        "drat_bytes": len(proof),
+    }
+
+
+def write_jsonl(path: Path, documents: list[dict]) -> None:
+    """One JSON object per line, ASCII, LF, one trailing newline."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    body = "".join(json.dumps(document, sort_keys=True) + "\n" for document in documents)
+    path.write_bytes(body.encode("ascii"))
+
+
+def read_jsonl(path: Path) -> list[dict]:
+    return [
+        json.loads(line) for line in path.read_text(encoding="ascii").splitlines() if line.strip()
+    ]
+
+
 def write_wave(
     root: Path,
     directory: str,
     encoder: str,
     symmetry_break: bool,
     with_transcripts: bool,
+    verdicts_form: str = "dir",
 ) -> None:
-    """Write one complete, honest wave under ``directory``."""
-    refute_every_cube(encoder, symmetry_break)
-    base = base_instance(encoder, symmetry_break)
+    """Write one complete, honest wave under ``directory``.
 
-    write_json(
-        root / directory / "manifest.json",
-        {
-            "schema": "cube-wave.v2",
-            "N": N,
-            "k": K,
-            "l": L,
-            "encoder": encoder,
-            "symmetry_break": symmetry_break,
-            "snapshot_commit": NULL_COMMIT,
-            "base": base,
-            "split_vars": list(SPLIT),
-            "n_cubes": N_CUBES,
-            "cubes_sha256": cubes_sha256(SPLIT),
-            "cube_construction": CONSTRUCTION,
-        },
-    )
+    ``verdicts_form`` is ``"dir"`` for one JSON file per cube or ``"jsonl"``
+    for the consolidated file a wave of thousands of cubes is committed as.
+    Both carry the same verdict objects, and the gate has to hold every W rule
+    identically over either.
+    """
+    if verdicts_form not in VERDICT_FORMS:
+        raise ValueError(
+            f"unknown verdicts form {verdicts_form!r}; expected one of {VERDICT_FORMS}"
+        )
+    refute_every_cube(encoder, symmetry_break)
+
+    write_json(root / directory / "manifest.json", manifest_document(encoder, symmetry_break))
 
     lines = []
+    verdicts = [verdict_document(index) for index in range(N_CUBES)]
+    if verdicts_form == "jsonl":
+        write_jsonl(root / directory / "verdicts.jsonl", verdicts)
     for index in range(N_CUBES):
-        proof = f"c placeholder proof for cube {index}\n0\n".encode("ascii")
-        proof_sha = hashlib.sha256(proof).hexdigest()
-        write_json(
-            root / directory / "verdicts" / f"cube{index:04d}.json",
-            {
-                "cube": index,
-                "lits": cube_literals(SPLIT, index),
-                "rc": 20,
-                "wall_s": 0.01,
-                "drat_sha256": proof_sha,
-                "drat_bytes": len(proof),
-            },
-        )
+        proof = placeholder_proof(index)
+        proof_sha = verdicts[index]["drat_sha256"]
+        if verdicts_form == "dir":
+            write_json(root / directory / "verdicts" / f"cube{index:04d}.json", verdicts[index])
         if not with_transcripts:
             continue
         proof_rel = f"{directory}/proofs/cube{index:04d}.drat.gz"
@@ -157,8 +199,73 @@ def write_wave(
         )
 
     if with_transcripts:
-        body = "".join(json.dumps(line, sort_keys=True) + "\n" for line in lines)
-        (root / directory / "transcripts.jsonl").write_bytes(body.encode("ascii"))
+        write_jsonl(root / directory / "transcripts.jsonl", lines)
+
+
+# --- the off-repo shape a running campaign writes ---------------------------
+#
+# A live wave is cut and solved outside the repository: one verdict file per
+# cube under `verdicts/`, one gzipped proof per cube under `drat/`, and a
+# checker's own transcript line per proof - a different record from the one a
+# wave is committed as, because it is written by the checker rather than for
+# the gate. tools/import_wave.py is what turns one into the other, so the
+# fixture for it has to be the shape the campaign actually produces.
+
+SOURCE_TOOL = "fixture placeholder - no checker ran"
+
+
+def cube_instance_sha(encoder: str, symmetry_break: bool, index: int) -> str:
+    """The sha256 of one cube instance, as the checker fed it recorded it."""
+    module = ENCODERS[encoder]
+    n_vars, clauses = module.build(N, K, L, symmetry_break=symmetry_break)
+    with tempfile.TemporaryDirectory(prefix="wavefix-") as work:
+        base = write_cnf(Path(work) / "base.cnf", n_vars, clauses)
+        info = write_cube_cnf(base["path"], SPLIT, index, Path(work) / "cube.cnf")
+    return str(info["sha256"])
+
+
+def write_source_wave(
+    source: Path,
+    encoder: str = "seqcount",
+    symmetry_break: bool = True,
+    *,
+    with_transcripts: bool = True,
+    with_proofs: bool = True,
+) -> Path:
+    """Write a complete off-repo wave in the layout a campaign leaves behind."""
+    refute_every_cube(encoder, symmetry_break)
+    write_json(source / "manifest.json", manifest_document(encoder, symmetry_break))
+
+    transcripts = []
+    for index in range(N_CUBES):
+        proof = placeholder_proof(index)
+        verdict = verdict_document(index)
+        write_json(source / "verdicts" / f"v{index:05d}.json", verdict)
+        if with_proofs:
+            # Tens of gigabytes in the live case, and never committed: the
+            # import tool has to leave every one of these behind.
+            proof_path = source / "drat" / f"cube_{index:05d}.drat.gz"
+            proof_path.parent.mkdir(parents=True, exist_ok=True)
+            with gzip.GzipFile(
+                filename="", mode="wb", fileobj=proof_path.open("wb"), mtime=0
+            ) as out:
+                out.write(proof)
+        transcripts.append(
+            {
+                "cube": index,
+                "ok": True,
+                "tool": SOURCE_TOOL,
+                "tool_rc": 0,
+                "verdict": "s VERIFIED",
+                "drat_sha256": verdict["drat_sha256"],
+                "drat_bytes": verdict["drat_bytes"],
+                "cnf_sha256": cube_instance_sha(encoder, symmetry_break, index),
+                "check_wall_s": 0.02,
+            }
+        )
+    if with_transcripts:
+        write_jsonl(source / "transcripts.jsonl", transcripts)
+    return source
 
 
 def default_level(confirm: str | None, transcripts: bool) -> str:
@@ -178,12 +285,14 @@ def build_wave_repo(
     confirm: str | None = "wave",
     transcripts: bool = True,
     evidence_level: str | None = None,
+    verdicts_form: str = "dir",
 ) -> Path:
     """Write a miniature repository whose single claim rests on a cube wave.
 
     ``confirm`` is ``"wave"`` for a second complete wave from a different
     encoder, ``"unsat_runs"`` for a monolithic run-log from a different encoder,
-    or ``None`` for no confirmation at all.
+    or ``None`` for no confirmation at all. ``verdicts_form`` selects the shape
+    both waves' verdicts are written in; the claim points at whichever it is.
     """
     root.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(GOOD / "claims" / "ANCHORS.json", _make(root / "claims" / "ANCHORS.json"))
@@ -201,16 +310,18 @@ def build_wave_repo(
             "sha256": hashlib.sha256(witness_path.read_bytes()).hexdigest(),
         }
 
-    write_wave(root, PRIMARY_DIR, "seqcount", True, transcripts)
+    write_wave(root, PRIMARY_DIR, "seqcount", True, transcripts, verdicts_form)
 
     runs: list[str] = []
     confirm_block: dict | None = None
     if confirm == "wave":
-        write_wave(root, CONFIRM_DIR, "totalizer", False, False)
+        write_wave(root, CONFIRM_DIR, "totalizer", False, False, verdicts_form)
         confirm_block = {
             "kind": "wave",
             "manifest": CONFIRM_MANIFEST,
-            "verdicts_dir": CONFIRM_VERDICTS,
+            "verdicts_dir": (
+                CONFIRM_VERDICTS_JSONL if verdicts_form == "jsonl" else CONFIRM_VERDICTS
+            ),
             "transcripts": None,
         }
     elif confirm == "unsat_runs":
@@ -232,7 +343,7 @@ def build_wave_repo(
         "drat": None,
         "wave": {
             "manifest": MANIFEST,
-            "verdicts_dir": VERDICTS,
+            "verdicts_dir": VERDICTS_JSONL if verdicts_form == "jsonl" else VERDICTS,
             "transcripts": TRANSCRIPTS if transcripts else None,
             "confirm": confirm_block,
         },
@@ -264,7 +375,40 @@ def patch_manifest(root: Path, mutate, directory: str = PRIMARY_DIR) -> None:
 
 
 def patch_verdict(root: Path, index: int, mutate, directory: str = PRIMARY_DIR) -> None:
+    """Break one cube's verdict, in whichever form this wave was written in."""
+    consolidated = root / directory / "verdicts.jsonl"
+    if consolidated.is_file():
+        patch_verdict_line(root, index, mutate, directory)
+        return
     path = root / directory / "verdicts" / f"cube{index:04d}.json"
+    verdict = read_json(path)
+    mutate(verdict)
+    write_json(path, verdict)
+
+
+def verdict_lines(root: Path, directory: str = PRIMARY_DIR) -> list[dict]:
+    return read_jsonl(root / directory / "verdicts.jsonl")
+
+
+def write_verdict_lines(root: Path, lines: list[dict], directory: str = PRIMARY_DIR) -> None:
+    write_jsonl(root / directory / "verdicts.jsonl", lines)
+
+
+def patch_verdict_line(root: Path, index: int, mutate, directory: str = PRIMARY_DIR) -> None:
+    lines = verdict_lines(root, directory)
+    mutate(next(line for line in lines if line["cube"] == index))
+    write_verdict_lines(root, lines, directory)
+
+
+def patch_source_manifest(source: Path, mutate) -> None:
+    """Break the manifest of an off-repo wave, in place, before it is imported."""
+    manifest = read_json(source / "manifest.json")
+    mutate(manifest)
+    write_json(source / "manifest.json", manifest)
+
+
+def patch_source_verdict(source: Path, index: int, mutate) -> None:
+    path = source / "verdicts" / f"v{index:05d}.json"
     verdict = read_json(path)
     mutate(verdict)
     write_json(path, verdict)
@@ -272,7 +416,6 @@ def patch_verdict(root: Path, index: int, mutate, directory: str = PRIMARY_DIR) 
 
 def patch_transcript(root: Path, index: int, mutate) -> None:
     path = root / TRANSCRIPTS
-    lines = [json.loads(line) for line in path.read_text(encoding="ascii").splitlines() if line]
+    lines = read_jsonl(path)
     mutate(lines[index])
-    body = "".join(json.dumps(line, sort_keys=True) + "\n" for line in lines)
-    path.write_bytes(body.encode("ascii"))
+    write_jsonl(path, lines)

@@ -31,6 +31,10 @@ not, and that is the target of this campaign.
 - `gate/verify_all.py` - the gate. It re-runs the arithmetic itself, regenerates
   each claimed instance and compares sha256, and requires two structurally
   different encodings behind any UNSAT claim. It runs with no solver installed.
+- `tools/import_wave.py` - imports a finished off-repo cube wave as committable
+  evidence: it refuses anything incomplete, re-derives the cube set from the
+  split, consolidates the per-cube verdicts into one file, copies no proof, and
+  prints the claim to paste in.
 - `claims/` - what this repo asserts, and the evidence level of each assertion.
 - `evidence/` - witnesses and run-logs, plus drat-trim transcripts once proofs
   are emitted; no transcript is on record yet, and every claim carries a null
@@ -102,7 +106,24 @@ proof-checking substitutes for a second encoding. **No wave claim is on record
 in this repository. Nothing here says a wave has completed, and the gate is
 where that will become visible if one ever does.**
 
-A wave is one directory. A verdict file records a cube index, its literals, a
+A wave runs outside this repository - sixteen thousand cube instances and tens
+of gigabytes of DRAT proofs are not a git tree - and `tools/import_wave.py` is
+what brings the committable part across:
+
+    python tools/import_wave.py --source <wave dir> --name k17_l2_N274_totalizer --dry-run
+
+It checks the whole source before writing anything, refuses a wave that is
+still running or has a cube that did not come back UNSAT, re-derives the cube
+set from the split rather than believing the recorded hash, never touches the
+source and never copies a proof, and prints the claim JSON to paste into
+`claims/CLAIMS.json`. The verdicts land as one `verdicts.jsonl`, one per line:
+committing sixteen thousand tiny files would make this repository slow to clone
+and unreadable on GitHub. The gate reads that form and the one-file-per-cube
+form identically - same reader, same rules - and in the consolidated form a
+line that will not parse is a failure rather than a skip, because a reader that
+skips one accepts a record that a dying machine truncated.
+
+A wave is one directory. A verdict records a cube index, its literals, a
 return code and a proof hash - it names no instance and no encoder, and the
 literals follow from the split alone, so the verdicts of two encodings of the
 same instance are byte-identical. Nothing inside them says which instance they

@@ -134,6 +134,11 @@ TRANSCRIPT_KEYS = {
     "cube", "drat_sha256", "drat_bytes", "proof_path_rel", "checker", "verdict",
 }
 PROOF_SUFFIX = ".drat.gz"
+# A wave's verdicts are committed either as a directory of one JSON file per
+# cube or, once there are thousands of them, as one file holding the same
+# objects a line each. The recorded path's own name says which: sixteen
+# thousand files is not a repository anybody can clone or read on GitHub.
+VERDICTS_SUFFIX = ".jsonl"
 # A wave can hold tens of thousands of cubes and a single mistake in the
 # generator breaks all of them at once. Print enough to diagnose, then a count.
 EXAMPLES = 3
@@ -895,6 +900,95 @@ def read_manifest(
     return manifest
 
 
+def collect_verdict(
+    document: object, where: str, label: str, n_cubes: int,
+    verdicts: dict[int, Verdict], problems: list[str],
+) -> None:
+    """Check one verdict object and file it under its cube id.
+
+    One implementation for both storage forms, so that "a duplicate cube is
+    refused" cannot be true of a directory of verdicts and false of a
+    consolidated file holding the same objects.
+    """
+    if not isinstance(document, dict) or set(document) != VERDICT_KEYS:
+        problems.append(f"{label}: {where} keys are not exactly {sorted(VERDICT_KEYS)}")
+        return
+    cube = document["cube"]
+    if isinstance(cube, bool) or not isinstance(cube, int) or not 0 <= cube < n_cubes:
+        problems.append(f"{label}: {where} has cube {cube!r}, outside 0..{n_cubes - 1}")
+        return
+    if cube in verdicts:
+        problems.append(f"{label}: cube {cube} has more than one verdict on record")
+        return
+    lits = document["lits"]
+    if not isinstance(lits, list) or not all(
+        isinstance(x, int) and not isinstance(x, bool) for x in lits
+    ):
+        problems.append(f"{label}: verdict for cube {cube} has no list of literals")
+        return
+    verdicts[cube] = Verdict(
+        list(lits), document["rc"], document["drat_sha256"], document["drat_bytes"]
+    )
+
+
+def read_verdicts_dir(
+    root: Path, path: Path, label: str, n_cubes: int, report: Report,
+) -> tuple[dict[int, Verdict], list[str]] | None:
+    """One JSON file per cube. Returns ``(verdicts, problems)``, or None if the
+    path is not a directory at all."""
+    if not path.is_dir():
+        return None
+    verdicts: dict[int, Verdict] = {}
+    problems: list[str] = []
+    for entry in sorted(path.iterdir()):
+        if entry.is_dir() or entry.suffix.lower() != ".json":
+            report.warn(f"{entry.relative_to(root).as_posix()} is not a wave verdict")
+            continue
+        try:
+            document = load_json(entry)
+        except (ValueError, UnicodeDecodeError) as exc:
+            problems.append(f"{label}: verdict {entry.name} will not parse: {exc}")
+            continue
+        collect_verdict(document, f"verdict {entry.name}", label, n_cubes, verdicts, problems)
+    return verdicts, problems
+
+
+def read_verdicts_jsonl(
+    path: Path, label: str, n_cubes: int,
+) -> tuple[dict[int, Verdict], list[str]] | None:
+    """The same verdict objects consolidated one per line.
+
+    A wave of sixteen thousand cubes is sixteen thousand files, which is not a
+    thing to put in a repository, so a wave may commit its verdicts as one
+    ``.jsonl``. Nothing about W3 changes: every cube id still has to appear
+    exactly once with rc 20 and its own literals.
+
+    Every line has to be a verdict. A line that will not parse is a failure and
+    never a skip - a reader that skips one is a reader that passes a wave with
+    a cube nobody can account for, which is the exact hole W3 exists to close.
+    """
+    if not path.is_file():
+        return None
+    try:
+        text = path.read_bytes().decode("ascii")
+    except (OSError, UnicodeDecodeError) as exc:
+        return {}, [f"{label}: verdicts will not read as ASCII: {exc}"]
+    verdicts: dict[int, Verdict] = {}
+    problems: list[str] = []
+    for number, raw in enumerate(text.splitlines(), start=1):
+        where = f"verdicts line {number}"
+        if not raw.strip():
+            problems.append(f"{label}: {where} is empty; the file is one verdict per line")
+            continue
+        try:
+            document = json.loads(raw)
+        except ValueError as exc:
+            problems.append(f"{label}: {where} will not parse: {exc}")
+            continue
+        collect_verdict(document, where, label, n_cubes, verdicts, problems)
+    return verdicts, problems
+
+
 def read_verdicts(
     root: Path, claim_id: str, label: str, verdicts_rel: object, wave_dir: str,
     n_cubes: int, report: Report,
@@ -902,52 +996,32 @@ def read_verdicts(
     """W3, first half: load one verdict per cube id, or say what is wrong.
 
     The verdicts are read from inside ``wave_dir`` - the directory this wave's
-    own manifest names - and from nowhere else under ``evidence/waves/``.
+    own manifest names - and from nowhere else under ``evidence/waves/``. They
+    come in either of two forms, and the *recorded name* decides which: a path
+    ending ``.jsonl`` is the consolidated file, anything else is a directory of
+    one file per cube. Reading the claim rather than the disk is deliberate - a
+    claim then means one thing whatever happens to be lying about, and a
+    directory that has been given a ``.jsonl`` name is refused rather than
+    quietly accepted.
     """
     try:
-        directory = artifact_path(root, verdicts_rel, f"{label} verdicts directory", wave_dir)
+        path = artifact_path(root, verdicts_rel, f"{label} verdicts", wave_dir)
     except ArtifactPathError as exc:
         report.fail("W3", claim_id, str(exc))
         return None
-    if not directory.is_dir():
-        report.fail("W3", claim_id, f"{label} verdicts directory {verdicts_rel} is not a directory")
+
+    consolidated = isinstance(verdicts_rel, str) and verdicts_rel.endswith(VERDICTS_SUFFIX)
+    if consolidated:
+        loaded = read_verdicts_jsonl(path, label, n_cubes)
+        wanted = "a file"
+    else:
+        loaded = read_verdicts_dir(root, path, label, n_cubes, report)
+        wanted = "a directory"
+    if loaded is None:
+        report.fail("W3", claim_id, f"{label} verdicts {verdicts_rel} is not {wanted}")
         return None
 
-    verdicts: dict[int, Verdict] = {}
-    problems: list[str] = []
-    for path in sorted(directory.iterdir()):
-        if path.is_dir() or path.suffix.lower() != ".json":
-            report.warn(f"{path.relative_to(root).as_posix()} is not a wave verdict")
-            continue
-        try:
-            document = load_json(path)
-        except (ValueError, UnicodeDecodeError) as exc:
-            problems.append(f"{label}: verdict {path.name} will not parse: {exc}")
-            continue
-        if not isinstance(document, dict) or set(document) != VERDICT_KEYS:
-            problems.append(
-                f"{label}: verdict {path.name} keys are not exactly {sorted(VERDICT_KEYS)}"
-            )
-            continue
-        cube = document["cube"]
-        if isinstance(cube, bool) or not isinstance(cube, int) or not 0 <= cube < n_cubes:
-            problems.append(
-                f"{label}: verdict {path.name} has cube {cube!r}, outside 0..{n_cubes - 1}"
-            )
-            continue
-        if cube in verdicts:
-            problems.append(f"{label}: cube {cube} has more than one verdict on record")
-            continue
-        lits = document["lits"]
-        if not isinstance(lits, list) or not all(
-            isinstance(x, int) and not isinstance(x, bool) for x in lits
-        ):
-            problems.append(f"{label}: verdict for cube {cube} has no list of literals")
-            continue
-        verdicts[cube] = Verdict(
-            list(lits), document["rc"], document["drat_sha256"], document["drat_bytes"]
-        )
-
+    verdicts, problems = loaded
     if problems:
         report_examples(report, "W3", claim_id, problems)
         return None

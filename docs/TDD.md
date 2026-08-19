@@ -38,9 +38,22 @@ job only. That was observed on this repo's first commit, not theorized.
 | `evidence/drat/*.drat` | DRAT proofs | no (gitignored) |
 | `evidence/**/*.cnf` | DIMACS instances | no (regenerated, hash-matched) |
 | `evidence/waves/<name>/manifest.json` | one cube-wave manifest (below) | yes |
-| `evidence/waves/<name>/verdicts/*.json` | one verdict per cube | yes |
+| `evidence/waves/<name>/verdicts.jsonl` | every verdict, one per line | yes |
+| `evidence/waves/<name>/verdicts/*.json` | the same verdicts, one file each | yes |
 | `evidence/waves/<name>/transcripts.jsonl` | one checker line per cube | yes |
 | `evidence/waves/<name>/proofs/*.drat.gz` | per-cube DRAT, compressed | no (gitignored) |
+
+**A wave's verdicts come in either of two forms and the claim says which.** A
+`verdicts_dir` ending `.jsonl` is one file holding one verdict object per line;
+anything else is a directory of one file per cube. Both hold the same objects
+and every W rule holds identically over both - the reader is one function, so
+"a duplicate cube is refused" cannot be true of one form and false of the other.
+The consolidated form exists because the live wave is 16384 cubes: committing
+that many files makes a repository slow to clone and impossible to read on
+GitHub, and reviewing a diff of it is not a thing anybody would do. The form is
+taken from the *recorded name* and never from what is on disk, so one claim
+reads one way and a directory that has been given a `.jsonl` name is refused
+rather than quietly accepted.
 
 **Claim:** `{id, k, l, kind:"lower_bound"|"upper_bound"|"upper_bound_wave"|
 "exact", value, witness:{path,sha256}|null, unsat_runs:[path,...],
@@ -86,15 +99,18 @@ regeneration for a wave exactly as G3 does for a monolithic run.
 
 **Manifest** `{schema:"cube-wave.v2", N, k, l, encoder, symmetry_break,
 snapshot_commit, base:{n_vars,n_clauses,sha256}, split_vars:[int], n_cubes,
-cubes_sha256, cube_construction}`. **Verdict**, one file per cube:
-`{cube, lits, rc, wall_s, drat_sha256, drat_bytes}`. **Transcript**, one JSONL
-line per cube: `{cube, drat_sha256, drat_bytes, proof_path_rel, checker,
+cubes_sha256, cube_construction}`. **Verdict**, one per cube, as a file or as a
+line: `{cube, lits, rc, wall_s, drat_sha256, drat_bytes}`. **Transcript**, one
+JSONL line per cube: `{cube, drat_sha256, drat_bytes, proof_path_rel, checker,
 verdict}`.
 
 **Claim block** `wave: {manifest, verdicts_dir, transcripts:path|null,
 confirm:null | {kind:"wave", manifest, verdicts_dir, transcripts} |
-{kind:"unsat_runs"}}`. A confirm of kind `unsat_runs` points at the claim's own
-`unsat_runs` and asks the gate to find one there from another encoder.
+{kind:"unsat_runs"}}`. `verdicts_dir` names the directory of verdicts or the
+consolidated `.jsonl`; the key keeps its name because renaming a schema key
+that is already read by the gate buys nothing a sentence here does not. A
+confirm of kind `unsat_runs` points at the claim's own `unsat_runs` and asks the
+gate to find one there from another encoder.
 
 **A wave is one directory, and the manifest is the file that names it.** A
 verdict records `{cube, lits, rc, wall_s, drat_sha256, drat_bytes}` and nothing
@@ -250,7 +266,7 @@ rule passes; failures print `FAIL <rule> <claim-id> <reason>`.
 | G7 | Achieved evidence level `>=` declared `evidence_level`; overstatement fails, understatement prints INFO. Levels below. |
 | W1 | The manifest is `evidence/waves/<name>/manifest.json` - **that directory is the wave**, and W3 and W4 read nothing from outside it - parses, has exactly the `cube-wave.v2` keys, and its base instance **regenerates** from `(N,k,l,encoder,symmetry_break)` to the recorded sha256, var count and clause count - the same machinery G3 uses. `split_vars` are distinct main variables in `1..N`; `n_cubes == 2**len(split_vars)`. |
 | W2 | The cube set is complete **by construction**: the gate re-derives every cube from `split_vars` and hashes the result against `cubes_sha256`. No cubes file is read, and an unrecognised `cube_construction` fails rather than being guessed at. |
-| W3 | The verdicts are read from inside the wave's own directory. Every cube id `0..n_cubes-1` has exactly one verdict, each with `rc == 20` - any other value, `null` included, is UNKNOWN and leaves the decomposition open - and each verdict's `lits` are the construction's literals for that id. |
+| W3 | The verdicts are read from inside the wave's own directory, from the directory or the `.jsonl` the claim names. Every cube id `0..n_cubes-1` has exactly one verdict, each with `rc == 20` - any other value, `null` included, is UNKNOWN and leaves the decomposition open - and each verdict's `lits` are the construction's literals for that id. A second verdict for one cube fails, a cube id outside the range fails, and in the consolidated form **a line that is not a verdict is a failure and never a skip** - a reader that skips one passes a wave whose record is short by however many lines a dying machine truncated. |
 | W4 | If `transcripts` is present: it and every proof it names sit inside the wave's own directory; one line per cube, each line's `drat_sha256` and `drat_bytes` equal to that cube's verdict, `verdict` exactly `s VERIFIED`, a checker named, and a `proof_path_rel` ending `.drat.gz`. The gate does not decompress a proof; that is the checker pass. |
 | W5 | The claim and the manifest are about one instance: `value == manifest.N`, `k` and `l` equal. `upper_bound_wave` needs a wave; `lower_bound` and plain `upper_bound` may not carry one; `exact` needs both sides - a witness at `V-1` and a wave (or two-encoder `unsat_runs`) at `V`. |
 | W6 | **No exact claim rests on one encoding.** An `exact` claim carrying a wave needs `wave.confirm`: a second complete wave from a *different* encoder (transcripts optional, W1-W3 checked just as hard), or `unsat_runs` holding a verified run-log from a different encoder. Absent that, the claim fails outright - declaring a lower `evidence_level`, or having the lower side on record, does not buy the word "exact". Confirmation is what lifts a wave to `unsat-dual` and above. |
@@ -282,10 +298,10 @@ a committed artifact must not carry a gitignored suffix (`.cnf`, `.drat`, `.gz`
 - a compressed proof is `cube00000.drat.gz`, whose suffix is `.gz`); and
 it must still be inside the root once symlinks and junctions are resolved.
 **For a wave the directory a path belongs in is the wave's own** - the one its
-`manifest.json` names, not `evidence/waves/` at large - so a verdicts directory,
-a transcripts file or a proof belonging to a different wave is refused under the
-rule that read it: W1 for the manifest, W3 for the verdicts, W4 for the
-transcripts and the proofs.
+`manifest.json` names, not `evidence/waves/` at large - so a verdicts directory
+or `.jsonl`, a transcripts file or a proof belonging to a different wave is
+refused under the rule that read it: W1 for the manifest, W3 for the verdicts,
+W4 for the transcripts and the proofs.
 Without this a claim can point at a file that is on one machine and in no
 checkout - `../elsewhere/witness.txt`, or `scratch/witness.txt` - and the gate
 prints "verified from artifacts on disk" for a repository that holds no
@@ -296,6 +312,68 @@ Artifacts referenced by no claim are WARN only - untidiness, not unsoundness. A
 wave is referenced as a unit: naming the manifest covers the directory it sits
 in, because listing sixteen thousand verdict files in a claim would serve
 nobody.
+
+## Importing a wave - `tools/import_wave.py`
+
+A wave runs off-repo, because 16384 cube instances and tens of gigabytes of
+compressed DRAT are not a git tree. What is committable is the manifest, the
+verdicts and the checker's lines, and this is the one thing that moves them
+across:
+
+    python tools/import_wave.py --source <dir> --name <wave-name> [--expect-cubes N] [--dry-run]
+
+It reads the whole source and checks it **before writing a byte**, because a
+half-imported wave is worse than none: `evidence/waves/<name>/` would then hold
+a manifest saying 16384 and verdicts for 9000, and the claim it invites is the
+claim the gate exists to refuse. What it demands is exactly what W1 to W4
+demand, one step earlier - the manifest is `cube-wave.v2` with the right keys
+and types, `split_vars` is a usable split with `n_cubes == 2**s`,
+`cubes_sha256` is re-derived from the split rather than believed,
+`cube_construction` is the one this repository implements, every cube id
+`0..n_cubes-1` has exactly one verdict with `rc == 20` over its own literals,
+and the transcripts, if there are any, cover every cube with `ok` true, the
+checker's `s VERIFIED`, and a `drat_sha256` and byte count equal to that cube's
+verdict. Anything else is refused with the cube numbers named, three at a time
+and then a count.
+
+`--expect-cubes` is the operator saying out loud what they think they cut; a
+disagreement with the manifest means one of the two is about a different wave.
+
+Three properties are not conveniences:
+
+* **The source is never written to.** A campaign is usually still running
+  against it, and a tool that consolidated verdicts in place would corrupt a
+  wave in flight.
+* **Nothing is written outside `evidence/waves/<name>/`.** The name has to be a
+  plain directory name, so `--name ../elsewhere` is refused before any path is
+  built from it.
+* **No `.drat` or `.drat.gz` is ever copied.** They are gitignored bulk. What
+  crosses is the transcript line about each one.
+
+Output is deterministic: the verdicts are written sorted by cube with sorted
+keys, ASCII and LF, so two imports of one source are byte-identical. The
+manifest is copied byte for byte (and refused if it holds a CR, since every
+artifact here is LF). The checker's transcript schema is *not* the gate's -
+it records `{cube, ok, tool, tool_rc, verdict, drat_sha256, drat_bytes,
+cnf_sha256, check_wall_s}`, which is what a checker knows - so it is normalised
+into `{cube, drat_sha256, drat_bytes, proof_path_rel, checker, verdict}`. Every
+field of that comes from the source except `proof_path_rel`, which is where
+this wave's proof for that cube belongs, `evidence/waves/<name>/proofs/`. That
+asserts no file is present, and none is: W4 checks transcripts rather than
+proofs precisely so a wave's proofs can be deleted, and `--reverify-drat`
+reports the absent ones by count.
+
+Finally it prints the campaign totals - cubes, total and longest solver wall
+time, proof bytes, encoder, base sha256 - and the claim JSON to paste into
+`claims/CLAIMS.json`, twice: as an `upper_bound_wave` standing on this wave
+alone, and as the `exact` claim it becomes once a second encoder's wave
+confirms it, with the confirming wave's name left as a placeholder and the two
+fields no tool can write - `prior_art`, and what actually ran - marked
+`REPLACE:`. The declared `evidence_level` is the tier the gate will grant:
+`unsat-wave` bare, `wave-drat-verified` with transcripts, and one tier up each
+with confirmation. What it does **not** do is regenerate the base instance -
+that is W1's job, it costs a full encode, and the gate does it on every run.
+Import a wave, then run the gate; nothing is evidence until that exits 0.
 
 ## Failure modes
 
@@ -314,6 +392,9 @@ nobody.
 | One encoder is wrong and every cube of the wave inherits it | nobody | W6: no exact claim without a second encoder | drop to `upper_bound_wave` until a confirming wave exists |
 | A claim block is pasted from the previous encoder's wave and keeps its `verdicts_dir` | nobody - the verdicts are genuine, and they decided another instance | W1's wave-directory rule: verdicts, transcripts and proofs are read only from inside the directory the manifest names | correct the claim block; the gate reddens meanwhile |
 | Verdict files are copied from one wave's directory into another's | **nobody, and not the gate either** - a `cube-wave.v2` verdict names no instance | not detected; recorded above, and closed only by a v3 verdict carrying the base sha256 and encoder | re-cut the confirming wave |
+| A consolidated `verdicts.jsonl` is truncated mid-append by a dying machine | nobody - the file still parses up to the break | W3: the last line is not a verdict and is a failure, not a skip; and the cubes after it have no verdict | re-import the wave from the source, which was never modified |
+| A wave is imported while it is still running | nobody, and the claim would say every cube came back UNSAT | `import_wave` reads every cube before writing anything and refuses, naming the missing ones | nothing to undo - it wrote nothing |
+| An import is pointed at a name that is a path (`--name ../x`) | nobody | the name must be a plain directory name, checked before any path is built | nothing to undo |
 
 ## Rollback
 
@@ -391,6 +472,33 @@ otherwise that whole path would run nowhere: the stub proves the gate
 decompresses each proof, hashes it against the transcript, rebuilds the cube
 instance and believes the answer, none of which needs a real checker to test.
 
+The **consolidated form** is the same fixture written the other way, and each
+W3 case is repeated against it: a missing cube, an `rc: null` cube, tampered
+literals, a duplicate line, a cube id past the end, a line that is not a
+verdict, and a `verdicts.jsonl` borrowed from the other wave. Two of those only
+say anything because of how they are built - the duplicate and the junk line
+are *extra* lines beside a complete and correct set, so a reader that skipped
+them would pass, where corrupting an existing line would be caught by the
+missing-cube rule and prove nothing about skipping. The four level-earning
+shapes are asserted again in this form: the storage form must not move a claim
+up or down the ladder.
+
+**Importing** - `tests/_wavefix.py` also writes the off-repo shape a campaign
+leaves behind (`verdicts/vNNNNN.json`, `drat/cube_NNNNN.drat.gz`, and the
+checker's own transcript schema), every cube of it refuted by `_minisolve`
+first. The round trip is the whole point: import that source, paste the claim
+fragment the tool printed, and the gate must exit 0 at the level the tool
+declared - so the fragment is checked by the thing it is a fragment for, not by
+a string comparison. Beside it, one test per refusal (incomplete, `rc: null`,
+satisfiable cube, tampered lits, bad cube hash, wrong `n_cubes`,
+`--expect-cubes` disagreeing, transcript short a cube, `ok: false`, transcript
+about another proof, duplicate transcript line, duplicate verdict, `cube-wave.v1`
+manifest, unknown construction, unparseable verdict, source that is not a wave,
+name that is a path, destination already occupied), each asserted to write
+nothing; and four properties: the source is byte-identical afterwards, no
+`.drat.gz` is anywhere in the repository, `--dry-run` writes nothing at all, and
+two imports of one source produce identical bytes.
+
 **Boundary** - `N < k` (no APs): zero clauses, header `p cnf N 0`, evaluator says
 avoids; `l=1` odd `k`: `lo > hi`, empty clause, UNSAT, `N(k,1) = k`; `b=0`,
 `b=k-1`, `b>=k` in both cardinality encoders; `k=2`; `d` and `a` each at maximum;
@@ -444,6 +552,21 @@ test never observed failing is decoration):
 | M38 | gate resolves a wave's `verdicts_dir` anywhere under `evidence/waves/` instead of inside the directory its manifest names | the borrowed-verdicts fixtures, primary and confirming |
 | M39 | gate reads a wave's transcripts, or a proof they name, from another wave's directory | the borrowed-transcript and borrowed-proof fixtures |
 | M40 | gate takes any `*.json` under `evidence/waves/<name>/` as a wave manifest | the manifest-not-named-`manifest.json` fixture |
+| M41 | consolidated reader skips a line it cannot parse instead of failing | the extra-junk-line fixtures (truncated, blank, whitespace) |
+| M42 | verdict reader accepts a cube id twice | the duplicate fixtures, **both forms** - one reader serves both |
+| M43 | verdict reader accepts a cube id at or beyond `n_cubes` | the extra-id-line fixture |
+| M44 | gate resolves a consolidated `verdicts.jsonl` anywhere under `evidence/waves/` | the borrowed-`verdicts.jsonl` fixture |
+| M45 | gate reads the storage form off the disk instead of off the recorded name | the directory-named-`verdicts.jsonl` fixture |
+| M46 | import does not notice a cube with no verdict | the incomplete-source test |
+| M47 | import takes `rc: null` as decided | the timed-out-cube source |
+| M48 | import does not check a verdict's literals | the tampered-lits source |
+| M49 | import trusts `cubes_sha256` instead of re-deriving it from the split | the tampered-cube-hash source |
+| M50 | import does not require a transcript line per cube | the short-transcripts source |
+| M51 | import ignores a transcript's `ok` | the `ok: false` source |
+| M52 | import does not tie a transcript line to its cube's proof hash | the wrong-sha transcript source |
+| M53 | import accepts two verdicts for one cube | the resumed-wave source, which holds one twice |
+| M54 | import overwrites a wave already on record | the second-import test |
+| M55 | import accepts a wave name that is a path | the `--name ../elsewhere` cases |
 
 ## CI and environment
 
