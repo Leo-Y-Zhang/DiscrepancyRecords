@@ -36,6 +36,22 @@
       "evidence_level": "witness",
       "prior_art": "The bound N(17,2) >= 273 is published by T. A. Lystad, Zenodo DOI 10.5281/zenodo.21840279 (v1.3 bundle), with a periodic witness at N = 272. This repository claims no priority for it.",
       "notes": "a(17) of A398541 is open; this is the lower side of it. The witness was re-derived from the published description rather than copied - nine +1 then eight -1, period 17, tiled 16 times - and re-checked with nk2/evaluator.py, which reports a maximum |AP sum| of 1 over all 2176 seventeen-term APs in {1..272}. Every such AP has 1 <= d <= 16, so it meets each residue class mod 17 exactly once. No upper bound is claimed: N(17,2) <= V would need UNSAT at N = V from two encoders and no such run exists."
+    },
+    {
+      "id": "N17_2_lower_274",
+      "k": 17,
+      "l": 2,
+      "kind": "lower_bound",
+      "value": 274,
+      "witness": {
+        "path": "evidence/witnesses/k17_l2_N273.txt",
+        "sha256": "b12629196a74c6819602f89479023935e004942a298ae3ae94483015062f9a5a"
+      },
+      "unsat_runs": [],
+      "drat": null,
+      "evidence_level": "witness",
+      "prior_art": "Improves on N(17,2) >= 273 (T. A. Lystad, Zenodo DOI 10.5281/zenodo.21840279, periodic witness at N = 272). To our knowledge no witness at N = 273 has been published: 273 = 16*17 + 1 is exactly where the periodic construction dies, since the AP 1, 18, ..., 273 with d = 17 meets a single residue class mod 17.",
+      "notes": "First found by kissat 4.0.1 on the seqcounter avoidance instance at N = 273 (solved without search - zero conflicts), 2026-08-19, then re-checked by nk2/evaluator.py: every one of the 2193 seventeen-term APs in {1..273} has |sum| = 1. The coloring is non-periodic with 136 positions colored +1. No upper bound is claimed yet; a cube-and-conquer campaign at N = 274 is in progress."
     }
   ]
 }
