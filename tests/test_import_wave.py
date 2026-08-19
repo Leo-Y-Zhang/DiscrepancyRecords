@@ -65,6 +65,11 @@ def snapshot(directory):
     }
 
 
+def read_lines(path):
+    """The lines of a .jsonl unparsed, so that key order survives the reading."""
+    return path.read_text(encoding="ascii").splitlines()
+
+
 def fragments(out):
     """The claim fragments the tool prints, parsed."""
     blocks = {}
@@ -118,14 +123,58 @@ def test_the_exact_fragment_is_a_template_naming_a_confirming_wave(capsys, tmp_p
 
 
 def test_verdicts_are_sorted_by_cube_with_a_stable_key_order(capsys, tmp_path):
+    # Fed a source that already has both properties this asserts, the test
+    # asserts nothing about the tool: `verdicts/v00000.json ..` reads back in
+    # cube order however it is read, and a fixture that sorted its own keys
+    # hands them back sorted. So the source here is the one a *resumed*
+    # campaign leaves - verdicts already consolidated, appended in the order
+    # cubes finished, keys in the writer's own order - and the output being
+    # canonical is then the tool's doing and nobody else's.
     root = make_repo(tmp_path)
-    source = write_source_wave(tmp_path / "source")
+    source = write_source_wave(
+        tmp_path / "source",
+        verdicts_form="jsonl",
+        cube_order=list(reversed(range(N_CUBES))),
+        sort_keys=False,
+    )
+    given = [json.loads(line) for line in read_lines(source / "verdicts.jsonl")]
+    assert [document["cube"] for document in given] == list(reversed(range(N_CUBES)))
+    assert list(given[0]) != sorted(given[0])
+
     assert run_import(root, source) == 0
     capsys.readouterr()
-    lines = (root / WAVE_DIR / "verdicts.jsonl").read_text(encoding="ascii").splitlines()
-    assert [json.loads(line)["cube"] for line in lines] == list(range(N_CUBES))
-    for line in lines:
-        assert list(json.loads(line)) == sorted(json.loads(line))
+    written = [json.loads(line) for line in read_lines(root / WAVE_DIR / "verdicts.jsonl")]
+    assert [document["cube"] for document in written] == list(range(N_CUBES))
+    for document in written:
+        assert list(document) == sorted(document)
+
+
+def test_a_source_whose_verdicts_are_already_consolidated_passes_the_gate(capsys, tmp_path):
+    # The other storage form a source comes in, end to end: a campaign that
+    # appended to one verdicts.jsonl rather than writing a file per cube.
+    root = make_repo(tmp_path)
+    source = write_source_wave(tmp_path / "source", verdicts_form="jsonl")
+    assert not (source / "verdicts").exists()
+
+    assert run_import(root, source) == 0
+    out = capsys.readouterr().out
+    claim = fragments(out)["this wave alone (upper_bound_wave)"]
+    write_json(root / "claims" / "CLAIMS.json", {"schema": "nk2.claims.v1", "claims": [claim]})
+    assert gate_main(["--root", str(root)]) == 0, capsys.readouterr().out
+
+
+def test_two_imports_of_one_resumed_source_are_byte_identical(capsys, tmp_path):
+    source = write_source_wave(
+        tmp_path / "source",
+        verdicts_form="jsonl",
+        cube_order=[2, 0, 3, 1],
+        sort_keys=False,
+    )
+    first, second = make_repo(tmp_path, "one"), make_repo(tmp_path, "two")
+    assert run_import(first, source) == 0
+    assert run_import(second, source) == 0
+    capsys.readouterr()
+    assert snapshot(first / WAVE_DIR) == snapshot(second / WAVE_DIR)
 
 
 def test_two_imports_of_one_source_are_byte_identical(capsys, tmp_path):
@@ -197,7 +246,63 @@ def test_a_wave_without_transcripts_imports_and_earns_less(capsys, tmp_path):
     assert gate_main(["--root", str(root)]) == 0, capsys.readouterr().out
 
 
+def test_a_wave_that_recorded_no_proof_digests_imports_as_unsat_wave(capsys, tmp_path):
+    # A verdict-only campaign keeps no proof and so has no digest to record.
+    # That is honest, and it is importable - what it is not is drat-verified,
+    # and with no transcripts to claim otherwise the tool must take it.
+    root = make_repo(tmp_path)
+    source = write_source_wave(
+        tmp_path / "source",
+        with_transcripts=False,
+        with_proofs=False,
+        with_proof_digests=False,
+    )
+    assert run_import(root, source) == 0
+    out = capsys.readouterr().out
+    claim = fragments(out)["this wave alone (upper_bound_wave)"]
+    assert claim["evidence_level"] == "unsat-wave"
+
+    write_json(root / "claims" / "CLAIMS.json", {"schema": "nk2.claims.v1", "claims": [claim]})
+    assert gate_main(["--root", str(root)]) == 0, capsys.readouterr().out
+
+
 # --- refusals ---------------------------------------------------------------
+
+
+def test_transcripts_recording_no_proof_digest_are_refused(capsys, tmp_path):
+    # The shape that got past this tool and died at the gate: a verdict-only
+    # wave whose verdicts carry drat_sha256 null, run through a checker wrapper
+    # that copies that null into its transcript. Equality alone is satisfied by
+    # null == null, so the wave imported, declared wave-drat-verified, and then
+    # failed W4 on every cube - and the destination guard meant a hand deletion
+    # before it could be imported again. W4 wants a digest, so this wants one.
+    root = make_repo(tmp_path)
+    source = write_source_wave(
+        tmp_path / "source", with_proofs=False, with_proof_digests=False
+    )
+    assert read_json(source / "verdicts" / "v00000.json")["drat_sha256"] is None
+
+    assert run_import(root, source) == 1
+    err = capsys.readouterr().err
+    assert "cube 0" in err and "sha256" in err
+    assert not (root / WAVE_DIR).exists()
+
+
+def test_a_transcript_digest_the_verdict_never_recorded_is_refused(capsys, tmp_path):
+    # The half of it the other way round: the verdict kept no digest and the
+    # transcript quotes one, so nothing ties that proof to this cube's solve.
+    root = make_repo(tmp_path)
+    source = write_source_wave(
+        tmp_path / "source", with_proofs=False, with_proof_digests=False
+    )
+    path = source / "transcripts.jsonl"
+    lines = read_jsonl(path)
+    lines[1].update({"drat_sha256": "b" * 64, "drat_bytes": 33})
+    write_jsonl(path, lines)
+    assert run_import(root, source) == 1
+    err = capsys.readouterr().err
+    assert "cube 1" in err and "sha256" in err
+    assert not (root / WAVE_DIR).exists()
 
 
 def test_an_incomplete_wave_is_refused_naming_the_missing_cubes(capsys, tmp_path):
@@ -319,6 +424,56 @@ def test_a_duplicate_verdict_is_refused(capsys, tmp_path):
     write_json(source / "verdicts" / "v00001-resumed.json", duplicate)
     assert run_import(root, source) == 1
     assert "more than one verdict" in capsys.readouterr().err
+
+
+def test_a_duplicate_line_in_a_consolidated_source_is_refused(capsys, tmp_path):
+    # A resumed campaign that re-solved a cube appends a second line for it.
+    # The set is complete either way, so a reader that took the last line wins
+    # would import happily; two verdicts for one cube is still two answers to
+    # one question, and which of them is being claimed is not the tool's to
+    # decide.
+    root = make_repo(tmp_path)
+    source = write_source_wave(tmp_path / "source", verdicts_form="jsonl")
+    path = source / "verdicts.jsonl"
+    lines = read_jsonl(path)
+    write_jsonl(path, lines + [lines[1]])
+    assert run_import(root, source) == 1
+    assert "more than one verdict" in capsys.readouterr().err
+    assert not (root / WAVE_DIR).exists()
+
+
+@pytest.mark.parametrize(
+    "junk, expected",
+    [
+        (b'{"cube": 0, ', "will not parse"),
+        (b"\n", "is empty"),
+        (b"   \n", "is empty"),
+    ],
+    ids=["truncated", "blank", "whitespace"],
+)
+def test_a_line_that_is_not_a_verdict_in_a_consolidated_source_is_refused(
+    capsys, tmp_path, junk, expected
+):
+    # Appended *after* a complete and correct set, so a reader that skipped the
+    # line it could not read would find every cube present and import. The
+    # truncated case is what a machine dying mid-append leaves behind.
+    root = make_repo(tmp_path)
+    source = write_source_wave(tmp_path / "source", verdicts_form="jsonl")
+    path = source / "verdicts.jsonl"
+    path.write_bytes(path.read_bytes() + junk)
+    assert run_import(root, source) == 1
+    assert expected in capsys.readouterr().err
+    assert not (root / WAVE_DIR).exists()
+
+
+def test_a_source_with_no_verdicts_at_all_is_refused(capsys, tmp_path):
+    root = make_repo(tmp_path)
+    source = write_source_wave(tmp_path / "source", verdicts_form="jsonl")
+    (source / "verdicts.jsonl").unlink()
+    assert run_import(root, source) == 1
+    err = capsys.readouterr().err
+    assert "neither" in err and "verdicts.jsonl" in err
+    assert not (root / WAVE_DIR).exists()
 
 
 def test_a_manifest_of_an_unknown_schema_is_refused(capsys, tmp_path):

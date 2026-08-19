@@ -121,7 +121,16 @@ committing sixteen thousand tiny files would make this repository slow to clone
 and unreadable on GitHub. The gate reads that form and the one-file-per-cube
 form identically - same reader, same rules - and in the consolidated form a
 line that will not parse is a failure rather than a skip, because a reader that
-skips one accepts a record that a dying machine truncated.
+skips one accepts a record that a dying machine truncated. A source may already
+be consolidated, which is what a resumed campaign appends to; the verdicts are
+written out sorted by cube with sorted keys whatever order they arrived in, so
+two imports of one source are the same bytes.
+
+What the tool will not do is import a wave at a level it cannot hold. A
+verdict-only campaign keeps no proof and records no hash of one, so a transcript
+quoting that same null is refused rather than written as `wave-drat-verified`
+for the gate to then reject cube by cube. That wave imports without its
+transcripts and stands honestly on its solver verdicts.
 
 A wave is one directory. A verdict records a cube index, its literals, a
 return code and a proof hash - it names no instance and no encoder, and the

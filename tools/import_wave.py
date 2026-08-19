@@ -353,6 +353,23 @@ def load_transcripts(
             problems.append(f"cube {cube} transcript names no checker")
             continue
         verdict = verdicts[cube]
+        # W4 wants a *digest*, not merely agreement, and two nulls agree
+        # perfectly: a verdict-only wave records no proof hash, so a checker
+        # wrapper run over it copies that null into every transcript line and
+        # the pair matches. Without this the wave imports, declares
+        # wave-drat-verified, and fails W4 on every cube - and since a
+        # destination that already holds a wave is refused, correcting it costs
+        # a hand deletion. A wave that hashed no proof is not drat-verified;
+        # it is `unsat-wave`, which it reaches by being imported without
+        # transcripts at all.
+        if not is_hex(line["drat_sha256"], 64):
+            problems.append(
+                f"cube {cube} transcript records proof sha256 "
+                f"{str(line['drat_sha256'])[:16]}, which is not a sha256 digest; a wave with no "
+                "proof hash on record cannot be drat-verified - import it without "
+                f"{TRANSCRIPTS_NAME} and it stands on its solver verdicts"
+            )
+            continue
         if line["drat_sha256"] != verdict["drat_sha256"]:
             problems.append(
                 f"cube {cube} transcript is about proof sha256 "

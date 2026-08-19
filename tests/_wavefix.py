@@ -122,22 +122,35 @@ def placeholder_proof(index: int) -> bytes:
     return f"c placeholder proof for cube {index}\n0\n".encode("ascii")
 
 
-def verdict_document(index: int) -> dict:
+def verdict_document(index: int, with_digests: bool = True) -> dict:
+    """One cube's verdict.
+
+    ``with_digests`` false is the shape a verdict-only campaign writes - it kept
+    no proof, so it has no digest to record and says so with nulls rather than
+    inventing one. Such a wave can still be honest evidence; what it cannot be
+    is drat-verified.
+    """
     proof = placeholder_proof(index)
     return {
         "cube": index,
         "lits": cube_literals(SPLIT, index),
         "rc": 20,
         "wall_s": 0.01,
-        "drat_sha256": hashlib.sha256(proof).hexdigest(),
-        "drat_bytes": len(proof),
+        "drat_sha256": hashlib.sha256(proof).hexdigest() if with_digests else None,
+        "drat_bytes": len(proof) if with_digests else None,
     }
 
 
-def write_jsonl(path: Path, documents: list[dict]) -> None:
-    """One JSON object per line, ASCII, LF, one trailing newline."""
+def write_jsonl(path: Path, documents: list[dict], sort_keys: bool = True) -> None:
+    """One JSON object per line, ASCII, LF, one trailing newline.
+
+    ``sort_keys`` is a knob because nothing outside this repository promises to
+    sort anything: a campaign's own writer emits whatever key order it built,
+    and a fixture that always sorts cannot show that the import tool is what
+    makes the committed file canonical.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
-    body = "".join(json.dumps(document, sort_keys=True) + "\n" for document in documents)
+    body = "".join(json.dumps(document, sort_keys=sort_keys) + "\n" for document in documents)
     path.write_bytes(body.encode("ascii"))
 
 
@@ -224,6 +237,16 @@ def cube_instance_sha(encoder: str, symmetry_break: bool, index: int) -> str:
     return str(info["sha256"])
 
 
+def reverse_keys(document: dict) -> dict:
+    """The same object with its keys in the opposite order.
+
+    JSON objects are unordered, so this changes nothing about what a line
+    *means* - which is exactly why a tool that wants a byte-identical import
+    twice has to impose an order of its own rather than inherit one.
+    """
+    return {key: document[key] for key in reversed(list(document))}
+
+
 def write_source_wave(
     source: Path,
     encoder: str = "seqcount",
@@ -231,16 +254,47 @@ def write_source_wave(
     *,
     with_transcripts: bool = True,
     with_proofs: bool = True,
+    with_proof_digests: bool = True,
+    verdicts_form: str = "dir",
+    cube_order: list[int] | None = None,
+    sort_keys: bool = True,
 ) -> Path:
-    """Write a complete off-repo wave in the layout a campaign leaves behind."""
+    """Write a complete off-repo wave in the layout a campaign leaves behind.
+
+    The defaults are the layout a fresh campaign writes: one verdict file per
+    cube, one gzipped proof per cube, digests recorded for both. The knobs are
+    the shapes a real campaign also produces, each of which the import tool has
+    to handle correctly rather than by luck:
+
+    * ``verdicts_form="jsonl"`` - the verdicts already consolidated, which is
+      what a resumed campaign appends to instead of writing thousands of files.
+    * ``cube_order`` - the order lines were appended, which is the order cubes
+      *finished* and not cube order.
+    * ``sort_keys=False`` - keys in the writer's own order (here, reversed),
+      because nothing off-repo promises to sort them. It applies to the
+      ``.jsonl`` writers; the per-cube files are pretty-printed and sorted.
+    * ``with_proof_digests=False`` - a verdict-only wave that kept no proof, so
+      it has no digest to record.
+    """
+    if verdicts_form not in VERDICT_FORMS:
+        raise ValueError(
+            f"unknown verdicts form {verdicts_form!r}; expected one of {VERDICT_FORMS}"
+        )
+    order = list(range(N_CUBES)) if cube_order is None else list(cube_order)
+    if sorted(order) != list(range(N_CUBES)):
+        raise ValueError(f"cube_order {order} is not a permutation of 0..{N_CUBES - 1}")
     refute_every_cube(encoder, symmetry_break)
     write_json(source / "manifest.json", manifest_document(encoder, symmetry_break))
 
     transcripts = []
-    for index in range(N_CUBES):
+    verdicts = []
+    for index in order:
         proof = placeholder_proof(index)
-        verdict = verdict_document(index)
-        write_json(source / "verdicts" / f"v{index:05d}.json", verdict)
+        verdict = verdict_document(index, with_proof_digests)
+        if verdicts_form == "jsonl":
+            verdicts.append(verdict if sort_keys else reverse_keys(verdict))
+        else:
+            write_json(source / "verdicts" / f"v{index:05d}.json", verdict)
         if with_proofs:
             # Tens of gigabytes in the live case, and never committed: the
             # import tool has to leave every one of these behind.
@@ -263,8 +317,10 @@ def write_source_wave(
                 "check_wall_s": 0.02,
             }
         )
+    if verdicts_form == "jsonl":
+        write_jsonl(source / "verdicts.jsonl", verdicts, sort_keys)
     if with_transcripts:
-        write_jsonl(source / "transcripts.jsonl", transcripts)
+        write_jsonl(source / "transcripts.jsonl", transcripts, sort_keys)
     return source
 
 

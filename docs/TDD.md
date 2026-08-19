@@ -332,9 +332,20 @@ and types, `split_vars` is a usable split with `n_cubes == 2**s`,
 `cube_construction` is the one this repository implements, every cube id
 `0..n_cubes-1` has exactly one verdict with `rc == 20` over its own literals,
 and the transcripts, if there are any, cover every cube with `ok` true, the
-checker's `s VERIFIED`, and a `drat_sha256` and byte count equal to that cube's
-verdict. Anything else is refused with the cube numbers named, three at a time
-and then a count.
+checker's `s VERIFIED`, and a `drat_sha256` that **is a digest** and equals that
+cube's verdict, byte count with it. Anything else is refused with the cube
+numbers named, three at a time and then a count.
+
+That the hash has to be a digest and not merely agree is the one place the two
+readers had drifted apart, and it cost a wave. A verdict-only campaign records
+`drat_sha256: null`, a checker wrapper run over it copies that null into every
+transcript line, and equality is then perfectly satisfied by `null == null` -
+so the wave imported, declared `wave-drat-verified`, and failed W4 (which does
+demand a digest) on every cube. It fails closed, so no false claim was ever
+certified; but the destination guard refuses a second import, so correcting it
+cost a hand deletion. A wave with no proof hash on record is not drat-verified,
+it is `unsat-wave`, and it reaches that by being imported with no transcripts
+at all.
 
 `--expect-cubes` is the operator saying out loud what they think they cut; a
 disagreement with the manifest means one of the two is about a different wave.
@@ -350,8 +361,15 @@ Three properties are not conveniences:
 * **No `.drat` or `.drat.gz` is ever copied.** They are gitignored bulk. What
   crosses is the transcript line about each one.
 
+A source comes in either storage form too - a resumed campaign appends to one
+`verdicts.jsonl` rather than writing thousands of files - and that form is read
+under the same rules: a duplicated cube, a line that will not parse and a blank
+line are each a refusal, never a skip.
+
 Output is deterministic: the verdicts are written sorted by cube with sorted
-keys, ASCII and LF, so two imports of one source are byte-identical. The
+keys **whatever order the source holds them in**, ASCII and LF, so a source
+appended in the order cubes finished imports to the same bytes as one written in
+cube order, and two imports of either are byte-identical. The
 manifest is copied byte for byte (and refused if it holds a CR, since every
 artifact here is LF). The checker's transcript schema is *not* the gate's -
 it records `{cube, ok, tool, tool_rc, verdict, drat_sha256, drat_bytes,
@@ -394,6 +412,7 @@ Import a wave, then run the gate; nothing is evidence until that exits 0.
 | Verdict files are copied from one wave's directory into another's | **nobody, and not the gate either** - a `cube-wave.v2` verdict names no instance | not detected; recorded above, and closed only by a v3 verdict carrying the base sha256 and encoder | re-cut the confirming wave |
 | A consolidated `verdicts.jsonl` is truncated mid-append by a dying machine | nobody - the file still parses up to the break | W3: the last line is not a verdict and is a failure, not a skip; and the cubes after it have no verdict | re-import the wave from the source, which was never modified |
 | A wave is imported while it is still running | nobody, and the claim would say every cube came back UNSAT | `import_wave` reads every cube before writing anything and refuses, naming the missing ones | nothing to undo - it wrote nothing |
+| A verdict-only wave (no proof hashes) is run through a checker wrapper and imported as drat-verified | the gate, one step later than it should - W4 wants a digest, and `null == null` had satisfied the import | `import_wave` demands a digest where W4 demands one, so the wave is refused rather than written | it wrote nothing; before this it wrote a wave that had to be deleted by hand, since a second import is refused |
 | An import is pointed at a name that is a path (`--name ../x`) | nobody | the name must be a plain directory name, checked before any path is built | nothing to undo |
 
 ## Rollback
@@ -492,12 +511,24 @@ declared - so the fragment is checked by the thing it is a fragment for, not by
 a string comparison. Beside it, one test per refusal (incomplete, `rc: null`,
 satisfiable cube, tampered lits, bad cube hash, wrong `n_cubes`,
 `--expect-cubes` disagreeing, transcript short a cube, `ok: false`, transcript
-about another proof, duplicate transcript line, duplicate verdict, `cube-wave.v1`
-manifest, unknown construction, unparseable verdict, source that is not a wave,
-name that is a path, destination already occupied), each asserted to write
-nothing; and four properties: the source is byte-identical afterwards, no
-`.drat.gz` is anywhere in the repository, `--dry-run` writes nothing at all, and
-two imports of one source produce identical bytes.
+about another proof, a transcript recording no digest at all and one recording a
+digest the verdict never had, duplicate transcript line, duplicate verdict,
+`cube-wave.v1` manifest, unknown construction, unparseable verdict, source that
+is not a wave, name that is a path, destination already occupied), each asserted
+to write nothing; and four properties: the source is byte-identical afterwards,
+no `.drat.gz` is anywhere in the repository, `--dry-run` writes nothing at all,
+and two imports of one source produce identical bytes.
+
+The **consolidated source** - a resumed campaign's own `verdicts.jsonl` - is
+tested as its own round trip, with the duplicate-line, unparseable-line and
+blank-line refusals repeated against it, and it is what pins the tool's
+determinism: fed cube order back to front with keys in the writer's order, the
+import must still write `0,1,2,3` with sorted keys. Fed the fixture's default
+layout that assertion cannot fail - `verdicts/v00000.json ..` reads back in cube
+order however it is read, and a fixture that sorts its own keys hands them back
+sorted - so for a while it did not, and both halves of the tool's ordering could
+be deleted with the suite and the gate still green. A test whose fixture
+supplies the property under test asserts nothing.
 
 **Boundary** - `N < k` (no APs): zero clauses, header `p cnf N 0`, evaluator says
 avoids; `l=1` odd `k`: `lo > hi`, empty clause, UNSAT, `N(k,1) = k`; `b=0`,
@@ -567,6 +598,11 @@ test never observed failing is decoration):
 | M53 | import accepts two verdicts for one cube | the resumed-wave source, which holds one twice |
 | M54 | import overwrites a wave already on record | the second-import test |
 | M55 | import accepts a wave name that is a path | the `--name ../elsewhere` cases |
+| M56 | import checks a transcript's hash for equality only, not that it is a digest | the proofless-wave-with-transcripts source, whose nulls agree |
+| M57 | import writes the verdicts in the order it read them (`list(verdicts.values())`) | the resumed source, appended back to front |
+| M58 | import writes the verdicts with unsorted keys (`json.dumps` without `sort_keys`) | the resumed source, whose own keys are not sorted |
+| M59 | import's consolidated reader accepts a cube id twice | the duplicate-line consolidated source |
+| M60 | import's consolidated reader skips a line it cannot read instead of failing | the truncated, blank and whitespace consolidated sources |
 
 ## CI and environment
 
