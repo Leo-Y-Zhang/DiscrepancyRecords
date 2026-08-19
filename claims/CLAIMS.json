@@ -1,0 +1,41 @@
+{
+  "schema": "nk2.claims.v1",
+  "claims": [
+    {
+      "id": "N3_2_exact_9",
+      "k": 3,
+      "l": 2,
+      "kind": "exact",
+      "value": 9,
+      "witness": {
+        "path": "evidence/witnesses/k3_l2_N8.txt",
+        "sha256": "07207548f327b56fd423aafbc1eb5efaaad37a6af8b58d2a2095d4c05e11871d"
+      },
+      "unsat_runs": [
+        "evidence/runs/k3_l2_N9_subsets.json",
+        "evidence/runs/k3_l2_N9_seqcount.json",
+        "evidence/runs/k3_l2_N9_totalizer.json"
+      ],
+      "drat": null,
+      "evidence_level": "unsat-dual",
+      "prior_art": "Published as a(3) of OEIS A398541. Nothing new is asserted here.",
+      "notes": "The smallest end-to-end case, kept because it exercises every gate rule against real artifacts rather than fixtures: an avoiding coloring of {1..8} on the lower side, and UNSAT at N=9 from all three encoders on the upper side. Solved with kissat 4.0.1; the gate regenerates each instance from (N,k,l,encoder) and matches the recorded sha256 without a solver present."
+    },
+    {
+      "id": "N17_2_lower_273",
+      "k": 17,
+      "l": 2,
+      "kind": "lower_bound",
+      "value": 273,
+      "witness": {
+        "path": "evidence/witnesses/k17_l2_N272.txt",
+        "sha256": "bf351407a1f5acb37a911a29c3ad8673378134def32294bc7c759acb23a6be9d"
+      },
+      "unsat_runs": [],
+      "drat": null,
+      "evidence_level": "witness",
+      "prior_art": "The bound N(17,2) >= 273 is published by T. A. Lystad, Zenodo DOI 10.5281/zenodo.21840279 (v1.3 bundle), with a periodic witness at N = 272. This repository claims no priority for it.",
+      "notes": "a(17) of A398541 is open; this is the lower side of it. The witness was re-derived from the published description rather than copied - nine +1 then eight -1, period 17, tiled 16 times - and re-checked with nk2/evaluator.py, which reports a maximum |AP sum| of 1 over all 2176 seventeen-term APs in {1..272}. Every such AP has 1 <= d <= 16, so it meets each residue class mod 17 exactly once. No upper bound is claimed: N(17,2) <= V would need UNSAT at N = V from two encoders and no such run exists."
+    }
+  ]
+}

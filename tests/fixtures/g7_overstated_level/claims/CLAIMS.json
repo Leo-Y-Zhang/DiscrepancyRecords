@@ -1,0 +1,21 @@
+{
+  "claims": [
+    {
+      "drat": null,
+      "evidence_level": "unsat-dual",
+      "id": "N3_2_lower_9_overstated",
+      "k": 3,
+      "kind": "lower_bound",
+      "l": 2,
+      "notes": "Bad fixture: the witness is genuine and the bound is true, but the claim declares an evidence level no artifact on disk supports. Ignoring the declared level is mutation M15.",
+      "prior_art": "a(3) of OEIS A398541.",
+      "unsat_runs": [],
+      "value": 9,
+      "witness": {
+        "path": "evidence/witnesses/k3_l2_N8.txt",
+        "sha256": "d363b1219268e1126f0dafa507a6332e85adb457e2bce58b572b7e4176fec6d4"
+      }
+    }
+  ],
+  "schema": "nk2.claims.v1"
+}

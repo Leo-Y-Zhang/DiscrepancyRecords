@@ -1,0 +1,11 @@
+# N(k,l) avoidance witness
+# k = 17
+# l = 2
+# N = 272
+# data line: N characters, position n (1-indexed) is + for f(n)=+1, - for f(n)=-1
+# periodic with period 17: nine +1 then eight -1, tiled 16 times
+# every 17-AP inside {1..272} has 1 <= d <= 16, so it meets each residue
+# class mod 17 once and sums to 9 - 8 = 1; hence N(17,2) >= 273
+# independently re-derived here and checked with nk2/evaluator.py; the
+# same bound is published by T. A. Lystad, Zenodo 10.5281/zenodo.21840279
++++++++++--------+++++++++--------+++++++++--------+++++++++--------+++++++++--------+++++++++--------+++++++++--------+++++++++--------+++++++++--------+++++++++--------+++++++++--------+++++++++--------+++++++++--------+++++++++--------+++++++++--------+++++++++--------

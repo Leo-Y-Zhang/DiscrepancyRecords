@@ -1,0 +1,7 @@
+{
+  "schema": "nk2.anchors.v1",
+  "sequence": "A398541",
+  "offset": 2,
+  "terms": [3, 9, 13, 22, 11, 49, 57, 65, 19, 112, 45, 158, 27, 225, 241],
+  "source": "OEIS A398541, published DATA line, terms a(2) through a(16). a(17) is open. The gate holds a second copy of this list as a literal and refuses to run if the two disagree; the even-k entries are cross-checked against the Spencer (1973) parity formula by a test."
+}

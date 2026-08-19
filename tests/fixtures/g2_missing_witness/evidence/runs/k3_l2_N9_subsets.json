@@ -1,0 +1,34 @@
+{
+  "args": [
+    "kissat.exe",
+    "evidence/instances/k3_l2_N9_subsets.cnf"
+  ],
+  "finished_utc": "2026-08-19T07:59:04Z",
+  "host": {
+    "os": "Windows 11",
+    "python": "3.13.15"
+  },
+  "instance": {
+    "N": 9,
+    "encoder": "subsets",
+    "k": 3,
+    "l": 2,
+    "n_clauses": 32,
+    "n_vars": 9,
+    "path_rel": "evidence/instances/k3_l2_N9_subsets.cnf",
+    "sha256": "5f598f1988ddae897767666dff22b44f235ed872a98b93713a612ac01b1690ab",
+    "symmetry_break": false
+  },
+  "proof": null,
+  "rc": 20,
+  "schema": "nk2.runlog.v1",
+  "solver": {
+    "exe_sha256": "9f7ff2340265543d455699564e60c5691bd677ea18dbd4d5e07755488184b97f",
+    "name": "kissat",
+    "version": "4.0.1"
+  },
+  "started_utc": "2026-08-19T07:59:04Z",
+  "timed_out": false,
+  "verdict": "UNSAT",
+  "wall_seconds": 0.015
+}

@@ -1,0 +1,24 @@
+{
+  "claims": [
+    {
+      "drat": null,
+      "evidence_level": "unsat-dual",
+      "id": "N3_2_exact_9",
+      "k": 3,
+      "kind": "exact",
+      "l": 2,
+      "notes": "Bad fixture: one position flipped, sha256 updated to match. Only gate rule G2's own call to evaluator.avoids catches this; a stored verified-flag would not, which is mutation M10.",
+      "prior_art": "a(3) of OEIS A398541.",
+      "unsat_runs": [
+        "evidence/runs/k3_l2_N9_subsets.json",
+        "evidence/runs/k3_l2_N9_seqcount.json"
+      ],
+      "value": 9,
+      "witness": {
+        "path": "evidence/witnesses/k3_l2_N8.txt",
+        "sha256": "ac26d79eae30b3c4e526b44a8504210040968b28656aedea90eddf72d4fec230"
+      }
+    }
+  ],
+  "schema": "nk2.claims.v1"
+}

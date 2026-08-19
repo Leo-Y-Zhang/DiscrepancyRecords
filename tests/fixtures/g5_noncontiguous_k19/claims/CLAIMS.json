@@ -1,0 +1,24 @@
+{
+  "claims": [
+    {
+      "drat": null,
+      "evidence_level": "unsat-dual",
+      "id": "N19_1_exact_19",
+      "k": 19,
+      "kind": "exact",
+      "l": 1,
+      "notes": "Bad fixture. Every artifact here is genuine and the arithmetic is true; the gate refuses it anyway because an exact term at k = 19 is not contiguous with a(16) - a(17) onwards are open. The gate fails closed, which is mutation M14.",
+      "prior_art": "N(k,1) = k for odd k, since an odd number of +-1 values cannot sum to 0.",
+      "unsat_runs": [
+        "evidence/runs/k19_l1_N19_subsets.json",
+        "evidence/runs/k19_l1_N19_seqcount.json"
+      ],
+      "value": 19,
+      "witness": {
+        "path": "evidence/witnesses/k19_l1_N18.txt",
+        "sha256": "2b826a9e895a05da05ff5cc7992ab86360cc46bc824633fc4aaf1e9628fa9903"
+      }
+    }
+  ],
+  "schema": "nk2.claims.v1"
+}

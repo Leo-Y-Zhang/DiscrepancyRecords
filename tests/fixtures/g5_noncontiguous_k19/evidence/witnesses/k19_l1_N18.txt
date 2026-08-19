@@ -1,0 +1,7 @@
+# N(k,l) avoidance witness
+# k = 19
+# l = 1
+# N = 18
+# data line: N characters, position n (1-indexed) is + for f(n)=+1, - for f(n)=-1
+# {1..18} contains no 19-AP at all, so this avoids (19,1) vacuously
+++++++++++++++++++

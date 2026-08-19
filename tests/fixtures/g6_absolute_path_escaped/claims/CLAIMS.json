@@ -1,0 +1,24 @@
+{
+  "claims": [
+    {
+      "drat": null,
+      "evidence_level": "unsat-dual",
+      "id": "N3_2_exact_9",
+      "k": 3,
+      "kind": "exact",
+      "l": 2,
+      "notes": "Bad fixture: a leaked Windows path, in the spelling json.dumps produces. The path is E:\\scratch\\run and every separator is escaped on the way to disk, which is the case a single-separator pattern walks straight past.",
+      "prior_art": "a(3) of OEIS A398541.",
+      "unsat_runs": [
+        "evidence/runs/k3_l2_N9_subsets.json",
+        "evidence/runs/k3_l2_N9_seqcount.json"
+      ],
+      "value": 9,
+      "witness": {
+        "path": "evidence/witnesses/k3_l2_N8.txt",
+        "sha256": "824c577851575329776cbef09ac37e6441dd143d1a12d8c6adffc94545e24a1e"
+      }
+    }
+  ],
+  "schema": "nk2.claims.v1"
+}

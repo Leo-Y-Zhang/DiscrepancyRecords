@@ -1,0 +1,7 @@
+# N(k,l) avoidance witness
+# k = 3
+# l = 2
+# N = 8
+# data line: N characters, position n (1-indexed) is + for f(n)=+1, - for f(n)=-1
+# fixture witness
+--++--++

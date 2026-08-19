@@ -1,0 +1,28 @@
+{
+  "claims": [
+    {
+      "drat": {
+        "proof_bytes": 2,
+        "proof_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+        "transcript": "evidence/transcripts/k3_l2_N9_subsets.json"
+      },
+      "evidence_level": "drat-transcript",
+      "id": "N3_2_exact_9",
+      "k": 3,
+      "kind": "exact",
+      "l": 2,
+      "notes": "Bad fixture: a DRAT transcript that does not end 's VERIFIED'. A recorded proof is not a checked proof.",
+      "prior_art": "a(3) of OEIS A398541.",
+      "unsat_runs": [
+        "evidence/runs/k3_l2_N9_subsets.json",
+        "evidence/runs/k3_l2_N9_seqcount.json"
+      ],
+      "value": 9,
+      "witness": {
+        "path": "evidence/witnesses/k3_l2_N8.txt",
+        "sha256": "824c577851575329776cbef09ac37e6441dd143d1a12d8c6adffc94545e24a1e"
+      }
+    }
+  ],
+  "schema": "nk2.claims.v1"
+}

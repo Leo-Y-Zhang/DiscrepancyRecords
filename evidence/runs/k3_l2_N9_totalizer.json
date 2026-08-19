@@ -1,0 +1,34 @@
+{
+  "args": [
+    "kissat.exe",
+    "evidence/instances/k3_l2_N9_totalizer.cnf"
+  ],
+  "finished_utc": "2026-08-19T06:12:57Z",
+  "host": {
+    "os": "Windows 11",
+    "python": "3.13.15"
+  },
+  "instance": {
+    "N": 9,
+    "encoder": "totalizer",
+    "k": 3,
+    "l": 2,
+    "n_clauses": 288,
+    "n_vars": 169,
+    "path_rel": "evidence/instances/k3_l2_N9_totalizer.cnf",
+    "sha256": "26512e11dd590b4bc023885c9a1440ddee643a4e18f32a05d597c1a5178a2f81",
+    "symmetry_break": false
+  },
+  "proof": null,
+  "rc": 20,
+  "schema": "nk2.runlog.v1",
+  "solver": {
+    "exe_sha256": "9f7ff2340265543d455699564e60c5691bd677ea18dbd4d5e07755488184b97f",
+    "name": "kissat",
+    "version": "4.0.1"
+  },
+  "started_utc": "2026-08-19T06:12:57Z",
+  "timed_out": false,
+  "verdict": "UNSAT",
+  "wall_seconds": 0.015
+}
