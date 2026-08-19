@@ -12,3 +12,10 @@ extend-exclude = ["tests/fixtures"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP"]
+# E741 forbids the name `l` because it can be misread as `1`. The quantity this
+# repo computes is N(k,l); `l` is its name in the problem statement, in OEIS
+# A398541 and in every module contract in docs/TDD.md. Renaming it to `ell`
+# would make the code disagree with its own specification, so the rule is turned
+# off here deliberately rather than silenced line by line. Nothing else is
+# relaxed.
+ignore = ["E741"]
