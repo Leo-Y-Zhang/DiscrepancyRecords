@@ -27,7 +27,7 @@ import subprocess
 import sys
 import tempfile
 from collections.abc import Iterator
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 if __package__ in (None, ""):  # allow `python gate/verify_all.py` from a clean checkout
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -75,6 +75,24 @@ ABSOLUTE_PATH_PATTERNS = (
     re.compile(r"/home/[A-Za-z0-9_.-]"),
     re.compile(r"/Users/[A-Za-z0-9_.-]"),
 )
+
+# Where each kind of artifact has to live, from the data model in docs/TDD.md.
+# `root / <string out of CLAIMS.json>` is not a containment check on its own: it
+# resolves `../elsewhere/witness.txt` happily, it takes an absolute path by
+# replacing the root outright, and it accepts a path into the gitignored
+# scratch/ or evidence/drat/ trees. Any of those makes the gate say "verified
+# from artifacts on disk" for a checkout that does not contain the artifact -
+# green here, red for a stranger - which is the deception the gate exists to
+# prevent. So a claimed path must be a plain repo-relative path to a committed
+# artifact, in the directory that kind of artifact belongs in.
+WITNESS_DIR = "evidence/witnesses"
+RUNS_DIR = "evidence/runs"
+TRANSCRIPTS_DIR = "evidence/transcripts"
+EVIDENCE_DIR = "evidence"
+# Gitignored wholesale, so a committed artifact never carries one of these.
+# Instances and proofs do, which is why they are checked for containment only.
+BULK_SUFFIXES = {".cnf", ".drat"}
+
 SKIP_DIR_NAMES = {
     ".git", "__pycache__", ".pytest_cache", ".ruff_cache", ".venv", "node_modules",
 }
@@ -102,6 +120,43 @@ class Report:
 
     def clean(self, claim_id: str) -> bool:
         return self._claim_failures.get(claim_id, 0) == 0
+
+
+class ArtifactPathError(ValueError):
+    """A recorded path does not name an artifact of the repository being checked."""
+
+
+def artifact_path(root: Path, raw: object, label: str, under: str, committed: bool = True) -> Path:
+    """Resolve one recorded path, or refuse it and say why.
+
+    ``under`` is the directory the artifact has to sit in; ``committed`` is
+    False for the bulk files a transcript names, which are gitignored by design
+    and only have to stay inside the repository.
+    """
+    if not isinstance(raw, str):
+        raise ArtifactPathError(f"{label} path {raw!r} is not a string")
+    if not raw.strip():
+        raise ArtifactPathError(f"{label} path {raw!r} is empty")
+    if "\\" in raw or raw.startswith(("/", "~")) or PureWindowsPath(raw).drive:
+        raise ArtifactPathError(f"{label} path {raw!r} is not a plain repo-relative path")
+    relative = PurePosixPath(raw)
+    if ".." in relative.parts:
+        raise ArtifactPathError(f"{label} path {raw!r} climbs out of the repository")
+    # `./evidence/x` and `evidence//x` name the right file and are not the
+    # string the artifact is filed under, which would leave every claim's own
+    # cross-reference - warn_unreferenced, and any reader - comparing unequal
+    # spellings of one path. One spelling is the rule.
+    if relative.as_posix() != raw:
+        raise ArtifactPathError(f"{label} path {raw!r} is not a plain repo-relative path")
+    if not relative.is_relative_to(under) or relative == PurePosixPath(under):
+        raise ArtifactPathError(f"{label} path {raw!r} is outside {under}/")
+    if committed and relative.suffix.lower() in BULK_SUFFIXES:
+        raise ArtifactPathError(f"{label} path {raw!r} names a gitignored bulk artifact")
+    resolved = root / relative
+    # A symlink passes every check above and still points anywhere on the disk.
+    if not resolved.resolve().is_relative_to(root.resolve()):
+        raise ArtifactPathError(f"{label} path {raw!r} resolves outside the repository")
+    return resolved
 
 
 def sha256_bytes(data: bytes) -> str:
@@ -198,7 +253,11 @@ def rule_g2(claim: dict, claim_id: str, root: Path, report: Report) -> bool:
             report.fail("G2", claim_id, f"{claim['kind']} needs a witness, found null")
         return False
 
-    path = root / witness["path"]
+    try:
+        path = artifact_path(root, witness["path"], "witness", WITNESS_DIR)
+    except ArtifactPathError as exc:
+        report.fail("G2", claim_id, str(exc))
+        return False
     if not path.is_file():
         report.fail("G2", claim_id, f"witness {witness['path']} does not exist")
         return False
@@ -248,7 +307,12 @@ def rule_g3(claim: dict, claim_id: str, root: Path, report: Report) -> tuple[boo
     encoders: set[str] = set()
     ok = True
     for run_rel in runs:
-        path = root / run_rel
+        try:
+            path = artifact_path(root, run_rel, "run-log", RUNS_DIR)
+        except ArtifactPathError as exc:
+            report.fail("G3", claim_id, str(exc))
+            ok = False
+            continue
         if not path.is_file():
             report.fail("G3", claim_id, f"run-log {run_rel} does not exist")
             ok = False
@@ -360,7 +424,11 @@ def rule_g4(
         # catches any claim that says otherwise.
         return 0
 
-    transcript_path = root / str(drat["transcript"])
+    try:
+        transcript_path = artifact_path(root, drat["transcript"], "transcript", TRANSCRIPTS_DIR)
+    except ArtifactPathError as exc:
+        report.fail("G4", claim_id, str(exc))
+        return 0
     if not transcript_path.is_file():
         report.fail("G4", claim_id, f"transcript {drat['transcript']} does not exist")
         return 0
@@ -391,9 +459,18 @@ def rule_g4(
         report.fail("G4", claim_id, f"transcript does not end 's VERIFIED' (ends {tail[-1:]})")
         return 0
 
+    # The proof and the instance are gitignored bulk, so they only have to be
+    # inside the evidence tree - but they do have to be inside it. Both are fed
+    # to drat-trim below, and a path out of the repository would hand a
+    # subprocess a file nobody checking this claim can see.
     proof_rel = transcript.get("proof_path_rel")
-    if isinstance(proof_rel, str):
-        proof_path = root / proof_rel
+    proof_path: Path | None = None
+    if proof_rel is not None:
+        try:
+            proof_path = artifact_path(root, proof_rel, "proof", EVIDENCE_DIR, committed=False)
+        except ArtifactPathError as exc:
+            report.fail("G4", claim_id, str(exc))
+            return 0
         if proof_path.is_file():
             if sha256_bytes(proof_path.read_bytes()) != drat["proof_sha256"]:
                 report.fail("G4", claim_id, "proof on disk does not match the recorded sha256")
@@ -402,6 +479,17 @@ def rule_g4(
                 report.fail("G4", claim_id, "proof on disk does not match the recorded byte count")
                 return 0
 
+    instance_rel = transcript.get("instance_path_rel")
+    instance_path: Path | None = None
+    if instance_rel is not None:
+        try:
+            instance_path = artifact_path(
+                root, instance_rel, "instance", EVIDENCE_DIR, committed=False
+            )
+        except ArtifactPathError as exc:
+            report.fail("G4", claim_id, str(exc))
+            return 0
+
     if not reverify:
         return 3
 
@@ -409,15 +497,14 @@ def rule_g4(
     if binary is None:
         report.info(f"{claim_id}: --reverify-drat asked for, no drat-trim binary found")
         return 3
-    if not isinstance(proof_rel, str) or not (root / proof_rel).is_file():
+    if proof_path is None or not proof_path.is_file():
         report.info(f"{claim_id}: --reverify-drat asked for, the proof itself is not on disk")
         return 3
-    instance_rel = transcript.get("instance_path_rel")
-    if not isinstance(instance_rel, str):
+    if instance_path is None:
         report.fail("G4", claim_id, "transcript records no instance path to re-verify against")
         return 0
     completed = subprocess.run(
-        [binary, str(root / instance_rel), str(root / proof_rel)],
+        [binary, str(instance_path), str(proof_path)],
         capture_output=True, text=True, check=False,
     )
     if completed.returncode != 0 or "s VERIFIED" not in completed.stdout:

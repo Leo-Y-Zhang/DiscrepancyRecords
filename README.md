@@ -79,6 +79,13 @@ CPython 3.13 installation; `python -V` printing a version is the check.
 Each rule has a fixture under `tests/fixtures/` that is asserted to make the
 gate exit non-zero.
 
+G2, G3 and G4 share one more rule: every path a claim or a transcript records
+must be a plain repo-relative path to an artifact in the directory that kind of
+artifact belongs in. A path that climbs out of the checkout, is absolute, lands
+in a gitignored tree such as `scratch/`, or is a link out of the repository is
+refused by the rule that read it - otherwise the gate could report as verified
+an artifact that exists on one machine and in no checkout.
+
 ## Prior art, credited
 
 - Spencer (1973) - the even-`k` parity formula `N(k,2) = 2^t*(k-1)+1` for

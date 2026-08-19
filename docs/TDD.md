@@ -135,7 +135,8 @@ clauses; subsets ~85M clauses, correctly refused by its guard.
 No auth, database, RLS, definer function or listener; no grant exists to revoke.
 Three trust boundaries: CLI paths (resolved, required under the repo root before
 any write), solver output (trusted for a model only when `rc==10`), claim files
-(schema-checked, unknown keys rejected).
+(schema-checked, unknown keys rejected, and every recorded path resolved under
+the root before it is read - see the gate's path rule below).
 
 ## The gate - `gate/verify_all.py`
 
@@ -151,6 +152,20 @@ rule passes; failures print `FAIL <rule> <claim-id> <reason>`.
 | G5 | `ANCHORS.json` equals the 15 published terms held as a literal in the gate; every claim with `k <= 16` is consistent with its anchor; an `exact` claim for `k > 17` fails as non-contiguous with `a(16)`. |
 | G6 | No committed artifact holds an absolute path (`[A-Za-z]:[\\/]`, `/home/`, `/Users/`) or a non-ASCII byte. |
 | G7 | Achieved evidence level `>=` declared `evidence_level`; overstatement fails, understatement prints INFO. Levels: `witness` < `unsat-dual` < `drat-transcript` < `drat-reverified`. |
+
+**Path rule, shared by G2, G3 and G4.** Every path recorded in a claim or in a
+transcript is resolved with a containment check, never by joining it to the
+root. It must be a plain repo-relative path (no drive letter, no leading
+separator, no `..`, no backslash); it must sit under the directory its kind
+belongs in - `evidence/witnesses/`, `evidence/runs/`, `evidence/transcripts/`,
+and merely under `evidence/` for the gitignored bulk an instance or a proof is;
+a committed artifact must not carry a gitignored suffix (`.cnf`, `.drat`); and
+it must still be inside the root once symlinks and junctions are resolved.
+Without this a claim can point at a file that is on one machine and in no
+checkout - `../elsewhere/witness.txt`, or `scratch/witness.txt` - and the gate
+prints "verified from artifacts on disk" for a repository that holds no
+evidence at all. That is the precise deception the gate exists to prevent, so
+it is a failure under the rule that reads the path, not a warning.
 
 Artifacts referenced by no claim are WARN only - untidiness, not unsoundness.
 
@@ -204,6 +219,13 @@ witness of length `V` not `V-1`; single-encoder UNSAT; `verdict UNSAT` with
 `rc 1`; sha mismatch; non-contiguous `k=19` exact claim; overstated
 `evidence_level`; absolute path in a claim file. The witness reader rejects `0`,
 whitespace inside the data line, two data lines, and a comments-only file.
+Path rule, each against a copy of the good fixture whose artifact is genuine and
+only mislocated: a witness or run-log path that climbs out of the root with
+`..`, one that lands in the gitignored `scratch/`, an absolute one, a committed
+one carrying a gitignored suffix, a transcript outside `evidence/transcripts/`,
+a proof or instance path out of the tree, and a witness directory that is a link
+to somewhere else. Each must fail under the rule that read it, and a good DRAT
+block in the right directories is the positive control beside them.
 
 **Boundary** - `N < k` (no APs): zero clauses, header `p cnf N 0`, evaluator says
 avoids; `l=1` odd `k`: `lo > hi`, empty clause, UNSAT, `N(k,1) = k`; `b=0`,
@@ -238,6 +260,13 @@ test never observed failing is decoration):
 | M18 | symmetry break on by default | golden hash + no-unit assertion |
 | M19 | subsets uses `u-1`-subsets | equivalence |
 | M20 | parity helper uses `m` where `k` belongs | parity-vs-anchors test |
+| M21 | gate joins a recorded path to the root with no containment check | every path-rule test |
+| M22 | gate drops the absolute / drive-letter check | absolute-witness test |
+| M23 | gate drops the `..` check | escaped witness, run-log and proof tests |
+| M24 | gate drops the required-directory check | the `scratch/` tests |
+| M25 | gate drops the gitignored-suffix check | witness named `.cnf` |
+| M26 | gate drops link resolution | linked-out witness directory |
+| M27 | gate drops the one-spelling rule | `./evidence/...` witness path |
 
 ## CI and environment
 
