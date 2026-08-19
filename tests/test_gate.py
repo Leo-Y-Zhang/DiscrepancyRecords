@@ -132,7 +132,11 @@ def test_bad_fixture_is_refused(name, rule, capsys):
 def test_real_claims_verify(capsys):
     code, out = run(ROOT, capsys)
     assert code == 0, out
-    assert "OK 2 claim(s)" in out
+    # The gate must have verified every claim in the committed claims file,
+    # not a subset - pin the count to the file so a skipped claim cannot hide.
+    n = len(json.loads((ROOT / "claims" / "CLAIMS.json").read_text())["claims"])
+    assert n >= 2
+    assert f"OK {n} claim(s)" in out
 
 
 def test_gate_needs_no_solver():
