@@ -6,4 +6,9 @@ ruff==0.16.3
 # CI-only SAT engine. It decides the tiny anchor instances (k=3, N=8 and N=9)
 # and the exhaustive encoder-equivalence matrix, so CI needs no external solver
 # binary. The campaign itself uses a standalone solver via nk2/solve.py.
+#
+# The version is a pre-release because that is all this project publishes. For
+# cp313 it ships wheels tagged manylinux_2_28 and win_amd64, which covers both
+# CI jobs; the older manylinux_2_17 baseline stops at 1.8.dev19, so a runner on
+# glibc below 2.28 would have to build it.
 python-sat==1.9.dev15

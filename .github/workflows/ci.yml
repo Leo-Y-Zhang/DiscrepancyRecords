@@ -1,0 +1,45 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    # Both jobs matter. The Windows one is not ceremony: the development machine
+    # has core.autocrlf on, and a witness that checked out CRLF there and LF on
+    # Linux would hash to two different values and redden one job only.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Test
+        # No external solver binary is installed here, so anything marked
+        # `solver` is skipped. The tiny anchor instances are decided by
+        # python-sat instead.
+        run: pytest -q -m "not solver"
+
+      - name: Gate
+        # The point of this step is that it runs cold: no solver, no cached
+        # verdict, every claim re-derived from the artifacts in the checkout.
+        run: python gate/verify_all.py
