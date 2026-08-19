@@ -37,16 +37,75 @@ job only. That was observed on this repo's first commit, not theorized.
 | `evidence/transcripts/*.json` | drat-trim output + hashes | yes - **not** under `evidence/drat/`, which is ignored wholesale |
 | `evidence/drat/*.drat` | DRAT proofs | no (gitignored) |
 | `evidence/**/*.cnf` | DIMACS instances | no (regenerated, hash-matched) |
+| `evidence/waves/<name>/manifest.json` | one cube-wave manifest (below) | yes |
+| `evidence/waves/<name>/verdicts/*.json` | one verdict per cube | yes |
+| `evidence/waves/<name>/transcripts.jsonl` | one checker line per cube | yes |
+| `evidence/waves/<name>/proofs/*.drat.gz` | per-cube DRAT, compressed | no (gitignored) |
 
-**Claim:** `{id, k, l, kind:"lower_bound"|"upper_bound"|"exact", value,
-witness:{path,sha256}|null, unsat_runs:[path,...], drat:{proof_sha256,
-proof_bytes, transcript}|null, evidence_level, prior_art, notes}`.
+**Claim:** `{id, k, l, kind:"lower_bound"|"upper_bound"|"upper_bound_wave"|
+"exact", value, witness:{path,sha256}|null, unsat_runs:[path,...],
+drat:{proof_sha256, proof_bytes, transcript}|null, wave:{...}|null,
+evidence_level, prior_art, notes}`.
 `lower_bound V` = `N(k,l) >= V`, needs an avoiding coloring of `{1..V-1}`;
-`upper_bound V` = `N(k,l) <= V`, needs UNSAT at `N=V`; `exact V` needs both.
+`upper_bound V` = `N(k,l) <= V`, needs UNSAT at `N=V` from two encoders;
+`upper_bound_wave V` is the same bound carried by a cube-and-conquer wave;
+`exact V` needs both sides.
 **Null cases to branch on rather than assume away** - they will occur: `witness`
 null on an upper bound; `drat` null everywhere while proofs are deferred;
-`unsat_runs` empty on a lower bound; a run-log with `rc: null` (timeout or
-kill); a claim whose `k` has no anchor (`k >= 17`).
+`unsat_runs` empty on a lower bound or on a wave-carried bound; a run-log with
+`rc: null` (timeout or kill); a per-cube verdict with `rc: null` for the same
+reason; `drat_sha256` null in a verdict when the wave ran without proofs; a
+claim whose `k` has no anchor (`k >= 17`).
+
+**`wave` is the one optional key.** Every claim written before waves existed
+omits it, and absent means null. That asymmetry is deliberate and safe in one
+direction only: a missing wave can lower a claim's evidence, never raise it. Any
+key not in the schema is still refused, and every other key is still required.
+
+## Cube-and-conquer waves
+
+A wave decides one instance by deciding `2**s` derived ones - the base CNF plus
+`s` unit clauses fixing the split variables - so it proves the base UNSAT **iff
+the cube set is every assignment of the split.** That "iff" is the entire
+soundness argument, and it is exactly the part a cubes file cannot be trusted
+for: a generator that dropped a case writes a shorter file and a matching hash.
+So the gate never reads a cube file. `nk2/cubes.py` re-derives the whole set
+from `split_vars` and hashes that; the manifest's `cubes_sha256` has to equal
+what falls out.
+
+**Construction** `mask-lsb-first.v1`: for cube `i`, literal `j` is
+`+split_vars[j]` when bit `j` of `i` is set and `-split_vars[j]` when it is not,
+least significant bit first. The cube file is one `a <lits> 0` line per cube in
+index order, ASCII, LF, one trailing newline. A cube instance is the base CNF
+with those literals appended as units and the header clause count raised by `s`
+- `write_cube_cnf` is the only implementation, pinned by a test against
+`dimacs.write_cnf` fed the same clauses. Between them, the manifest's
+`base.sha256` and the construction fix the exact bytes of every cube instance
+without a single one of them being stored, which is what lets the gate demand
+regeneration for a wave exactly as G3 does for a monolithic run.
+
+**Manifest** `{schema:"cube-wave.v2", N, k, l, encoder, symmetry_break,
+snapshot_commit, base:{n_vars,n_clauses,sha256}, split_vars:[int], n_cubes,
+cubes_sha256, cube_construction}`. **Verdict**, one file per cube:
+`{cube, lits, rc, wall_s, drat_sha256, drat_bytes}`. **Transcript**, one JSONL
+line per cube: `{cube, drat_sha256, drat_bytes, proof_path_rel, checker,
+verdict}`.
+
+**Claim block** `wave: {manifest, verdicts_dir, transcripts:path|null,
+confirm:null | {kind:"wave", manifest, verdicts_dir, transcripts} |
+{kind:"unsat_runs"}}`. A confirm of kind `unsat_runs` points at the claim's own
+`unsat_runs` and asks the gate to find one there from another encoder.
+
+**Two things the gate cannot check, recorded so nobody mistakes them for
+checked.** `snapshot_commit` is required to be a well-formed commit id and is
+never treated as evidence: the gate runs on a checkout that need not be a git
+repository. And `drat_sha256` is the sha256 of the *uncompressed* proof, so
+while a `.drat.gz` sits on disk uncompressed its bytes are tied to nothing the
+gate reads - `--reverify-drat` is where a proof is decompressed, hashed against
+the transcript and fed to a checker. A wave manifest also records no solver
+identity at all, where a monolithic run-log records name, version and exe
+sha256; that is a gap in the `cube-wave.v2` schema, not something the gate can
+paper over.
 
 ## Interfaces
 
@@ -76,6 +135,13 @@ writes `p cnf <n_vars> <n_clauses>` and appends the body. Bytes: ASCII, `\n`
 only (CRLF is the live Windows bug here), literals space-separated **in emission
 order, not sorted**, each clause ends ` 0`, no comment lines, one trailing
 newline; sha256 over exact file bytes.
+
+`cubes.py` - `cube_literals(split_vars,i)`, `cube_clauses`, `cubes_text`,
+`cubes_sha256` and `write_cube_cnf(base_cnf, split_vars, i, out)`; `CONSTRUCTION`
+names the version above and `check_split` refuses a split that repeats a
+variable, holds a non-variable, is empty, or exceeds 24 variables. It imports no
+encoder: the construction is over variable numbers, and `var(x_n) = n` is what
+makes a split mean the same thing to two different encodings.
 
 Encoders - one signature, **no shared cardinality helper** (each hand-rolls its
 own; sharing would destroy the diversity this design rests on):
@@ -151,15 +217,39 @@ rule passes; failures print `FAIL <rule> <claim-id> <reason>`.
 | G4 | If `drat` present: proof sha256 and byte count match (an absent proof merely makes the level unreachable, and G7 catches the overstatement), transcript ends `s VERIFIED`, transcript instance sha256 equals G3's. drat-trim re-runs only under `--reverify-drat` when the binary exists. |
 | G5 | `ANCHORS.json` equals the 15 published terms held as a literal in the gate; every claim with `k <= 16` is consistent with its anchor; an `exact` claim for `k > 17` fails as non-contiguous with `a(16)`. |
 | G6 | No committed artifact holds an absolute path (`[A-Za-z]:[\\/]`, `/home/`, `/Users/`) or a non-ASCII byte. |
-| G7 | Achieved evidence level `>=` declared `evidence_level`; overstatement fails, understatement prints INFO. Levels: `witness` < `unsat-dual` < `drat-transcript` < `drat-reverified`. |
+| G7 | Achieved evidence level `>=` declared `evidence_level`; overstatement fails, understatement prints INFO. Levels below. |
+| W1 | The manifest parses, has exactly the `cube-wave.v2` keys, and its base instance **regenerates** from `(N,k,l,encoder,symmetry_break)` to the recorded sha256, var count and clause count - the same machinery G3 uses. `split_vars` are distinct main variables in `1..N`; `n_cubes == 2**len(split_vars)`. |
+| W2 | The cube set is complete **by construction**: the gate re-derives every cube from `split_vars` and hashes the result against `cubes_sha256`. No cubes file is read, and an unrecognised `cube_construction` fails rather than being guessed at. |
+| W3 | Every cube id `0..n_cubes-1` has exactly one verdict, each with `rc == 20` - any other value, `null` included, is UNKNOWN and leaves the decomposition open - and each verdict's `lits` are the construction's literals for that id. |
+| W4 | If `transcripts` is present: one line per cube, each line's `drat_sha256` and `drat_bytes` equal to that cube's verdict, `verdict` exactly `s VERIFIED`, a checker named, and a `proof_path_rel` ending `.drat.gz` inside `evidence/`. The gate does not decompress a proof; that is the checker pass. |
+| W5 | The claim and the manifest are about one instance: `value == manifest.N`, `k` and `l` equal. `upper_bound_wave` needs a wave; `lower_bound` and plain `upper_bound` may not carry one; `exact` needs both sides - a witness at `V-1` and a wave (or two-encoder `unsat_runs`) at `V`. |
+| W6 | **No exact claim rests on one encoding.** An `exact` claim carrying a wave needs `wave.confirm`: a second complete wave from a *different* encoder (transcripts optional, W1-W3 checked just as hard), or `unsat_runs` holding a verified run-log from a different encoder. Absent that, the claim fails outright - declaring a lower `evidence_level`, or having the lower side on record, does not buy the word "exact". Confirmation is what lifts a wave to `unsat-dual` and above. |
 
-**Path rule, shared by G2, G3 and G4.** Every path recorded in a claim or in a
-transcript is resolved with a containment check, never by joining it to the
-root. It must be a plain repo-relative path (no drive letter, no leading
-separator, no `..`, no backslash); it must sit under the directory its kind
-belongs in - `evidence/witnesses/`, `evidence/runs/`, `evidence/transcripts/`,
-and merely under `evidence/` for the gitignored bulk an instance or a proof is;
-a committed artifact must not carry a gitignored suffix (`.cnf`, `.drat`); and
+**Evidence levels**, weakest to strongest:
+`witness` < `unsat-wave` < `wave-drat-verified` < `unsat-dual` <
+`drat-transcript` < `drat-reverified`. The two wave tiers are new, and where
+they sit is a judgement worth stating. A wave carries one encoder's opinion of
+what avoidance means, however completely it is decomposed and however
+thoroughly each cube is proof-checked: a DRAT proof certifies that a CNF is
+unsatisfiable, never that the CNF is the problem. Encoder diversity is what this
+repository's soundness argument rests on, so `wave-drat-verified` sorts **below**
+`unsat-dual` - 16384 checked proofs of a wrong encoding are 16384 checked proofs
+of the wrong thing. A wave reaches `unsat-wave` bare, `wave-drat-verified` with
+full transcripts, `unsat-dual` when a second encoder confirms it, and
+`drat-transcript` with both. G7's semantics are unchanged: the declared level is
+a floor on strength, so understating it is INFO and overstating it fails. There
+is no wave-reverified tier - `--reverify-drat` over a wave is a check that can
+fail, not a promotion.
+
+**Path rule, shared by G2, G3, G4 and W1-W4.** Every path recorded in a claim,
+a transcript or a wave block is resolved with a containment check, never by
+joining it to the root. It must be a plain repo-relative path (no drive letter,
+no leading separator, no `..`, no backslash); it must sit under the directory
+its kind belongs in - `evidence/witnesses/`, `evidence/runs/`,
+`evidence/transcripts/`, `evidence/waves/`, and merely under `evidence/` for the
+gitignored bulk an instance or a proof is;
+a committed artifact must not carry a gitignored suffix (`.cnf`, `.drat`, `.gz`
+- a compressed proof is `cube00000.drat.gz`, whose suffix is `.gz`); and
 it must still be inside the root once symlinks and junctions are resolved.
 Without this a claim can point at a file that is on one machine and in no
 checkout - `../elsewhere/witness.txt`, or `scratch/witness.txt` - and the gate
@@ -167,7 +257,10 @@ prints "verified from artifacts on disk" for a repository that holds no
 evidence at all. That is the precise deception the gate exists to prevent, so
 it is a failure under the rule that reads the path, not a warning.
 
-Artifacts referenced by no claim are WARN only - untidiness, not unsoundness.
+Artifacts referenced by no claim are WARN only - untidiness, not unsoundness. A
+wave is referenced as a unit: naming the manifest covers the directory it sits
+in, because listing sixteen thousand verdict files in a claim would serve
+nobody.
 
 ## Failure modes
 
@@ -180,6 +273,10 @@ Artifacts referenced by no claim are WARN only - untidiness, not unsoundness.
 | DRAT proof fills the disk | operator, at once | proofs opt-in, gitignored, size recorded | delete `evidence/drat/`; claim drops to `unsat-dual` |
 | Claim overstates its evidence | gate | G7 | correct the declared level |
 | Anchor transcription error | CI | parity-formula test + G5 double copy | correct both copies |
+| Wave generator drops or duplicates a cube | nobody, until it is public | W2 re-derives the cube set from the split; W3 demands every id | re-cut the wave; the claim reddens meanwhile |
+| A cube times out and is written `rc: null` | operator | W3 - only rc 20 counts | re-run that cube; nothing is claimed until it lands |
+| A wave's proofs are deleted to save disk | operator | W4 checks transcripts, not proofs; `--reverify-drat` reports how many were absent | nothing to undo - transcripts are the record, proofs regenerate |
+| One encoder is wrong and every cube of the wave inherits it | nobody | W6: no exact claim without a second encoder | drop to `upper_bound_wave` until a confirming wave exists |
 
 ## Rollback
 
@@ -227,6 +324,30 @@ a proof or instance path out of the tree, and a witness directory that is a link
 to somewhere else. Each must fail under the rule that read it, and a good DRAT
 block in the right directories is the positive control beside them.
 
+**Waves** - the fixture is a real wave, not a mock: `tests/_wavefix.py` cuts the
+genuinely UNSAT `k=3, l=2, N=9` instance on two variables and **refutes all four
+cubes with `_minisolve` before writing a single verdict**, so `rc: 20` is never
+written for a cube this repository has not just decided. What stays synthetic is
+provenance - no solver ran, so the wall clock is a constant, and no checker ran,
+so the transcript's `checker` field says so in words and the proof bytes are a
+placeholder the gate never opens. One bad fixture per rule, each observed
+failing: a base sha256 that does not regenerate (W1), a cube-set hash the split
+does not produce (W2), a missing cube, an `rc: null` cube, a cube whose literals
+are not its own (W3), a transcript whose proof hash is not the verdict's (W4), a
+claim whose value is not the manifest's `N` (W5), and an `exact` claim with no
+confirmation - repeated with a deliberately understated `evidence_level`, since
+the rule is about the assertion and not about its volume (W6). Positive controls
+beside them: a confirmed wave, a wave confirmed by a monolithic run-log instead,
+and an `upper_bound_wave` standing alone on one encoder. Each of the four
+level-earning shapes is asserted to reach its tier exactly, and to fail G7 one
+tier higher. `write_cube_cnf` is checked byte for byte against `write_cnf` fed
+the same clauses. `--reverify-drat` over a wave is driven by a **stub checker**
+the test writes - a one-line script printing `s VERIFIED` or `s NOT VERIFIED` -
+because drat-trim is application-control blocked here and absent from CI, so
+otherwise that whole path would run nowhere: the stub proves the gate
+decompresses each proof, hashes it against the transcript, rebuilds the cube
+instance and believes the answer, none of which needs a real checker to test.
+
 **Boundary** - `N < k` (no APs): zero clauses, header `p cnf N 0`, evaluator says
 avoids; `l=1` odd `k`: `lo > hi`, empty clause, UNSAT, `N(k,1) = k`; `b=0`,
 `b=k-1`, `b>=k` in both cardinality encoders; `k=2`; `d` and `a` each at maximum;
@@ -267,6 +388,16 @@ test never observed failing is decoration):
 | M25 | gate drops the gitignored-suffix check | witness named `.cnf` |
 | M26 | gate drops link resolution | linked-out witness directory |
 | M27 | gate drops the one-spelling rule | `./evidence/...` witness path |
+| M28 | gate skips the base-instance regeneration behind a wave | wrong-base-sha wave fixture |
+| M29 | gate trusts `cubes_sha256` instead of re-deriving the cube set | tampered-cube-hash fixture |
+| M30 | gate lets a cube with no verdict pass | missing-cube fixture |
+| M31 | gate takes any return code as UNSAT | `rc: null` and `rc: 10` cube fixtures |
+| M32 | gate does not check a verdict's literals against the construction | tampered-lits fixture |
+| M33 | gate does not tie a transcript line to its cube's proof hash | transcript-sha-mismatch fixture |
+| M34 | gate does not check the manifest is about the claimed instance | wrong-`N` and wrong-`k` wave fixtures |
+| M35 | gate lets an exact claim rest on a single encoder's wave | exact-without-confirm fixture, at any declared level |
+| M36 | `--reverify-drat` does not hash the decompressed proof | substituted-`.drat.gz` fixture, against a stub checker |
+| M37 | `--reverify-drat` ignores what the checker said | stub checker printing `s NOT VERIFIED` |
 
 ## CI and environment
 

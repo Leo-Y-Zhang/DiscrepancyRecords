@@ -4,6 +4,14 @@ evidence/drat/
 evidence/**/*.cnf
 evidence/*.cnf
 
+# A wave's per-cube proofs, stored compressed. `*.drat` above does not match
+# `cube00000.drat.gz`, whose suffix is `.gz`, so it is named here explicitly.
+# What is committed for a wave is the manifest, the per-cube verdicts and the
+# per-cube transcripts; the proofs are bulk and the cube instances they were
+# checked against regenerate from the manifest.
+*.drat.gz
+evidence/waves/**/proofs/
+
 # The DIMACS writer streams the body to a sibling temp file and unlinks it in a
 # finally block. A killed run skips that, and the leftover is named
 # `<instance>.cnf.body.tmp`, which the `*.cnf` patterns above do not match.

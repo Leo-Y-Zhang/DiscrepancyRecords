@@ -17,14 +17,24 @@ break on, split on the 12 highest-occurrence variables, per-cube text DRAT) is
 running off-repo, with each finished proof checked by Refute and reduced to a
 sha256-bearing transcript line. A 64-cube presample returned 64/64 UNSAT.
 
+The claim schema and the gate now speak cube waves: kind `upper_bound_wave`, an
+optional `wave` block on any claim, and rules W1-W6 (manifest regenerates, cube
+set re-derived and hashed, every cube rc 20, transcripts tied to verdicts, claim
+and manifest about one instance, and no `exact` claim without a second encoder).
+Mutation battery M28-M35 covers them, every mutant observed failing. No wave is
+on record: `evidence/waves/` does not exist yet.
+
 ## Exact next step
 
-When the wave completes: import the campaign evidence (N = 273 witness, wave
-manifest, per-cube transcripts, anchor run-logs for a(7)/a(9)/a(11)), extend the
-claim schema and gate for cube-wave upper bounds (a wave is a manifest plus a
-complete cube set plus one verified transcript per cube - G3/G4 are currently
-single-run shaped), then run the totalizer confirmation wave for the two-encoder
-rule before any exact claim for N(17,2) is written.
+When the wave completes: import the campaign evidence into
+`evidence/waves/<name>/` - `manifest.json` (schema `cube-wave.v2`), one verdict
+JSON per cube under `verdicts/`, and `transcripts.jsonl` with one checker line
+per cube - plus the anchor run-logs for a(7)/a(9)/a(11), and write the claim as
+`upper_bound_wave` at evidence level `unsat-wave` or `wave-drat-verified`. The
+wave generator must cut its cubes by `nk2.cubes` (`mask-lsb-first.v1`, LSB
+first, in the order `split_vars` lists) or W2 will refuse the manifest. Only
+after the totalizer confirmation wave lands can the claim become `exact`; W6
+fails an exact claim that has no `wave.confirm` naming a second encoder.
 
 ## Campaign policies (set during the 18-19 Aug overnight run; reversible)
 

@@ -9,15 +9,21 @@ verdict is a promise; regeneration is evidence.
     python gate/verify_all.py
     python gate/verify_all.py --root tests/fixtures/bad_witness_sign
 
-Rules G1 to G7 are documented in docs/TDD.md. Failures print
+Rules G1 to G7 and W1 to W6 are documented in docs/TDD.md. Failures print
 ``FAIL <rule> <claim-id> <reason>`` and set a non-zero exit code. WARN and INFO
 lines never change the exit code: an unreferenced artifact is untidiness, and a
 claim that understates its evidence is not an error.
+
+The W rules are the same idea applied to a cube-and-conquer wave, where one
+UNSAT run becomes thousands and the load-bearing question becomes whether the
+cubes that ran are *every* case. The gate never reads a cube file: it re-derives
+the cube set from the split recorded in the manifest and hashes that.
 """
 
 from __future__ import annotations
 
 import argparse
+import gzip
 import hashlib
 import json
 import os
@@ -28,11 +34,20 @@ import sys
 import tempfile
 from collections.abc import Iterator
 from pathlib import Path, PurePosixPath, PureWindowsPath
+from typing import NamedTuple
 
 if __package__ in (None, ""):  # allow `python gate/verify_all.py` from a clean checkout
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from nk2 import encode_seqcount, encode_subsets, encode_totalizer  # noqa: E402
+from nk2.cubes import (  # noqa: E402
+    CONSTRUCTION,
+    CubeError,
+    check_split,
+    cube_literals,
+    cubes_sha256,
+    write_cube_cnf,
+)
 from nk2.dimacs import write_cnf  # noqa: E402
 from nk2.evaluator import avoids  # noqa: E402
 from nk2.witness import WitnessFormatError, read_witness  # noqa: E402
@@ -52,14 +67,76 @@ ENCODERS = {
     encode_totalizer.NAME: encode_totalizer,
 }
 
-KINDS = ("lower_bound", "upper_bound", "exact")
-LEVELS = ("witness", "unsat-dual", "drat-transcript", "drat-reverified")
+KINDS = ("lower_bound", "upper_bound", "upper_bound_wave", "exact")
+
+# Ordered weakest to strongest. Where two kinds of evidence are genuinely
+# incomparable the weaker floor sorts lower, because the order exists to refuse
+# overstatement rather than to rank achievements:
+#
+#   witness             a coloring this gate re-evaluated itself
+#   unsat-wave          a complete cube decomposition, every cube rc 20, one
+#                       encoder; the solver's word is taken for each cube
+#   wave-drat-verified  the same, plus a checker's recorded verdict on every
+#                       cube's proof: the solver is no longer trusted, but one
+#                       encoding still decides everything
+#   unsat-dual          two structurally different encodings agree, each
+#                       instance regenerated here; the encoder risk is covered,
+#                       the solver's word is taken
+#   drat-transcript     both: two encodings, and a checker's recorded verdict
+#                       (a monolithic proof under G4, or a confirmed wave whose
+#                       every cube is proof-checked)
+#   drat-reverified     the gate re-ran the checker itself
+#
+# wave-drat-verified sits below unsat-dual because a DRAT proof says nothing
+# about whether the CNF encodes the problem: 16384 checked proofs of a wrong
+# encoding are 16384 checked proofs of the wrong thing. Encoder diversity is
+# what this repository's soundness argument rests on, so a level that lacks it
+# may not outrank one that has it.
+LEVELS = (
+    "witness",
+    "unsat-wave",
+    "wave-drat-verified",
+    "unsat-dual",
+    "drat-transcript",
+    "drat-reverified",
+)
+LEVEL_WITNESS = LEVELS.index("witness") + 1
+LEVEL_UNSAT_WAVE = LEVELS.index("unsat-wave") + 1
+LEVEL_WAVE_DRAT = LEVELS.index("wave-drat-verified") + 1
+LEVEL_UNSAT_DUAL = LEVELS.index("unsat-dual") + 1
+LEVEL_DRAT_TRANSCRIPT = LEVELS.index("drat-transcript") + 1
+LEVEL_DRAT_REVERIFIED = LEVELS.index("drat-reverified") + 1
+
+# `wave` is the one optional key. Every claim written before cube waves existed
+# omits it, and absent has to keep meaning null or the committed record stops
+# verifying; absent can only ever lower a claim's evidence, never raise it, so
+# the default is safe. Everything else is required, and any key not listed here
+# is refused.
 CLAIM_KEYS = {
-    "id", "k", "l", "kind", "value", "witness", "unsat_runs", "drat",
+    "id", "k", "l", "kind", "value", "witness", "unsat_runs", "drat", "wave",
     "evidence_level", "prior_art", "notes",
 }
+REQUIRED_CLAIM_KEYS = CLAIM_KEYS - {"wave"}
 WITNESS_KEYS = {"path", "sha256"}
 DRAT_KEYS = {"proof_sha256", "proof_bytes", "transcript"}
+WAVE_KEYS = {"manifest", "verdicts_dir", "transcripts", "confirm"}
+CONFIRM_WAVE_KEYS = {"kind", "manifest", "verdicts_dir", "transcripts"}
+CONFIRM_RUNS_KEYS = {"kind"}
+
+MANIFEST_SCHEMA = "cube-wave.v2"
+MANIFEST_KEYS = {
+    "schema", "N", "k", "l", "encoder", "symmetry_break", "snapshot_commit",
+    "base", "split_vars", "n_cubes", "cubes_sha256", "cube_construction",
+}
+MANIFEST_BASE_KEYS = {"n_vars", "n_clauses", "sha256"}
+VERDICT_KEYS = {"cube", "lits", "rc", "wall_s", "drat_sha256", "drat_bytes"}
+TRANSCRIPT_KEYS = {
+    "cube", "drat_sha256", "drat_bytes", "proof_path_rel", "checker", "verdict",
+}
+PROOF_SUFFIX = ".drat.gz"
+# A wave can hold tens of thousands of cubes and a single mistake in the
+# generator breaks all of them at once. Print enough to diagnose, then a count.
+EXAMPLES = 3
 
 # A single drive letter, not the tail of a URL scheme: `https:/` must not trip
 # this, and neither must the rule's own definition in docs/TDD.md, which quotes
@@ -88,10 +165,13 @@ ABSOLUTE_PATH_PATTERNS = (
 WITNESS_DIR = "evidence/witnesses"
 RUNS_DIR = "evidence/runs"
 TRANSCRIPTS_DIR = "evidence/transcripts"
+WAVES_DIR = "evidence/waves"
 EVIDENCE_DIR = "evidence"
 # Gitignored wholesale, so a committed artifact never carries one of these.
 # Instances and proofs do, which is why they are checked for containment only.
-BULK_SUFFIXES = {".cnf", ".drat"}
+# `.gz` is here because a wave's proofs are committed nowhere and stored
+# compressed: `cube00000.drat.gz` has suffix `.gz`, not `.drat`.
+BULK_SUFFIXES = {".cnf", ".drat", ".gz"}
 
 SKIP_DIR_NAMES = {
     ".git", "__pycache__", ".pytest_cache", ".ruff_cache", ".venv", "node_modules",
@@ -99,7 +179,9 @@ SKIP_DIR_NAMES = {
 # Relative to --root. Fixtures deliberately contain the shapes G6 rejects, so
 # they are excluded here and scanned when a fixture is itself the root.
 SKIP_RELATIVE = {Path("evidence/drat"), Path("tests/fixtures"), Path("scratch")}
-SKIP_SUFFIXES = {".cnf", ".drat", ".tmp", ".pyc"}
+# `.gz` holds compressed proofs: opaque bytes, so the ASCII scan would fail on
+# the first one and every wave with its proofs still on disk would redden G6.
+SKIP_SUFFIXES = {".cnf", ".drat", ".gz", ".tmp", ".pyc"}
 
 
 class Report:
@@ -188,7 +270,7 @@ def rule_g1(claim: object, index: int, report: Report) -> str | None:
     claim_id = raw_id if isinstance(raw_id, str) and raw_id else f"#{index}"
 
     unknown = set(claim) - CLAIM_KEYS
-    missing = CLAIM_KEYS - set(claim)
+    missing = REQUIRED_CLAIM_KEYS - set(claim)
     if unknown:
         report.fail("G1", claim_id, f"unknown key(s) {sorted(unknown)}")
     if missing:
@@ -233,6 +315,38 @@ def rule_g1(claim: object, index: int, report: Report) -> str | None:
             bad(f"drat must be null or {sorted(DRAT_KEYS)}")
         elif not isinstance(drat["proof_bytes"], int) or isinstance(drat["proof_bytes"], bool):
             bad("drat.proof_bytes must be an integer")
+
+    wave = claim.get("wave")
+    if wave is not None:
+        if not isinstance(wave, dict) or set(wave) != WAVE_KEYS:
+            bad(f"wave must be null or {sorted(WAVE_KEYS)}")
+        else:
+            if not all(isinstance(wave[key], str) for key in ("manifest", "verdicts_dir")):
+                bad("wave.manifest and wave.verdicts_dir must be strings")
+            if wave["transcripts"] is not None and not isinstance(wave["transcripts"], str):
+                bad("wave.transcripts must be null or a string")
+            confirm = wave["confirm"]
+            if confirm is not None:
+                if not isinstance(confirm, dict) or confirm.get("kind") not in (
+                    "wave", "unsat_runs"
+                ):
+                    bad("wave.confirm must be null or an object with kind 'wave' or 'unsat_runs'")
+                elif confirm["kind"] == "wave":
+                    if set(confirm) != CONFIRM_WAVE_KEYS:
+                        bad(f"a confirm of kind 'wave' takes exactly {sorted(CONFIRM_WAVE_KEYS)}")
+                    elif not all(
+                        isinstance(confirm[key], str) for key in ("manifest", "verdicts_dir")
+                    ):
+                        bad("confirm.manifest and confirm.verdicts_dir must be strings")
+                    elif confirm["transcripts"] is not None and not isinstance(
+                        confirm["transcripts"], str
+                    ):
+                        bad("confirm.transcripts must be null or a string")
+                elif set(confirm) != CONFIRM_RUNS_KEYS:
+                    bad(
+                        "a confirm of kind 'unsat_runs' takes no other key; it points at the "
+                        "claim's own unsat_runs"
+                    )
 
     for field in ("prior_art", "notes"):
         if not isinstance(claim[field], str):
@@ -294,17 +408,28 @@ def rule_g2(claim: dict, claim_id: str, root: Path, report: Report) -> bool:
 # --- G3 ---------------------------------------------------------------------
 
 
-def rule_g3(claim: dict, claim_id: str, root: Path, report: Report) -> tuple[bool, set[str]]:
-    """Upper bound V: two distinct encoders, rc 20, and instances that regenerate."""
-    needed = claim["kind"] in ("upper_bound", "exact")
+def rule_g3(
+    claim: dict, claim_id: str, root: Path, report: Report
+) -> tuple[bool, set[str], set[str]]:
+    """Upper bound V: two distinct encoders, rc 20, and instances that regenerate.
+
+    Returns ``(two encoders agreed, instance sha256s, encoders behind valid
+    run-logs)``. The last of those is what W6 reads when a wave nominates the
+    claim's monolithic run-logs as its second encoding.
+    """
+    # An upper bound may rest on a cube wave instead of on monolithic runs; the
+    # W rules take over there, and unsat_runs is then optional corroboration.
+    # `upper_bound_wave` never needs run-logs at all.
+    on_a_wave = claim.get("wave") is not None
+    needed = claim["kind"] == "upper_bound" or (claim["kind"] == "exact" and not on_a_wave)
     runs = claim["unsat_runs"]
     shas: set[str] = set()
+    encoders: set[str] = set()
     if not runs:
         if needed:
             report.fail("G3", claim_id, f"{claim['kind']} needs UNSAT run-logs, found none")
-        return False, shas
+        return False, shas, encoders
 
-    encoders: set[str] = set()
     ok = True
     for run_rel in runs:
         try:
@@ -397,8 +522,8 @@ def rule_g3(claim: dict, claim_id: str, root: Path, report: Report) -> tuple[boo
                 f"only {len(encoders)} encoder(s) {sorted(encoders)} behind an UNSAT claim; "
                 "two structurally different encodings are required",
             )
-        return False, shas
-    return ok, shas
+        return False, shas, encoders
+    return ok, shas, encoders
 
 
 # --- G4 ---------------------------------------------------------------------
@@ -491,15 +616,15 @@ def rule_g4(
             return 0
 
     if not reverify:
-        return 3
+        return LEVEL_DRAT_TRANSCRIPT
 
     binary = find_drat_trim()
     if binary is None:
         report.info(f"{claim_id}: --reverify-drat asked for, no drat-trim binary found")
-        return 3
+        return LEVEL_DRAT_TRANSCRIPT
     if proof_path is None or not proof_path.is_file():
         report.info(f"{claim_id}: --reverify-drat asked for, the proof itself is not on disk")
-        return 3
+        return LEVEL_DRAT_TRANSCRIPT
     if instance_path is None:
         report.fail("G4", claim_id, "transcript records no instance path to re-verify against")
         return 0
@@ -510,7 +635,7 @@ def rule_g4(
     if completed.returncode != 0 or "s VERIFIED" not in completed.stdout:
         report.fail("G4", claim_id, f"drat-trim re-run did not verify (rc {completed.returncode})")
         return 0
-    return 4
+    return LEVEL_DRAT_REVERIFIED
 
 
 # --- G5 ---------------------------------------------------------------------
@@ -557,7 +682,7 @@ def rule_g5_claim(claim: dict, claim_id: str, report: Report) -> None:
             report.fail(
                 "G5", claim_id, f"lower bound {value} exceeds published a({k}) = {anchor}"
             )
-        elif kind == "upper_bound" and value < anchor:
+        elif kind in ("upper_bound", "upper_bound_wave") and value < anchor:
             report.fail(
                 "G5", claim_id, f"upper bound {value} is below published a({k}) = {anchor}"
             )
@@ -628,11 +753,546 @@ def rule_g7(claim: dict, claim_id: str, achieved: int, report: Report) -> None:
         )
 
 
+# --- W1 to W6: cube-and-conquer waves ---------------------------------------
+#
+# A wave decides one instance by deciding 2**s derived ones, so it is only a
+# proof of the original if the cube set really is every case. Nothing here reads
+# a cube file: the gate re-derives every cube from the split in the manifest and
+# hashes the result, because a cube file is exactly the artifact a wrong wave
+# would look right in.
+
+
+class Verdict(NamedTuple):
+    lits: list[int]
+    rc: object
+    drat_sha256: object
+    drat_bytes: object
+
+
+class WaveCheck(NamedTuple):
+    """What one wave block turned out to be worth."""
+
+    ok: bool  # W1 to W3 all passed: a complete decomposition, every cube UNSAT
+    manifest: dict | None  # parsed and well-shaped, whether or not W1 passed
+    transcripts_verified: bool  # W4 passed over one transcript line per cube
+
+
+def is_hex(value: object, length: int) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == length
+        and all(c in "0123456789abcdef" for c in value)
+    )
+
+
+def report_examples(report: Report, rule: str, claim_id: str, problems: list[str]) -> None:
+    for problem in problems[:EXAMPLES]:
+        report.fail(rule, claim_id, problem)
+    if len(problems) > EXAMPLES:
+        report.fail(rule, claim_id, f"... and {len(problems) - EXAMPLES} more like it")
+
+
+def read_manifest(
+    root: Path, claim_id: str, label: str, manifest_rel: object, report: Report
+) -> dict | None:
+    """W1, first half: the manifest exists, parses and has the right shape."""
+    try:
+        path = artifact_path(root, manifest_rel, f"{label} manifest", WAVES_DIR)
+    except ArtifactPathError as exc:
+        report.fail("W1", claim_id, str(exc))
+        return None
+    if not path.is_file():
+        report.fail("W1", claim_id, f"{label} manifest {manifest_rel} does not exist")
+        return None
+    try:
+        manifest = load_json(path)
+    except (ValueError, UnicodeDecodeError) as exc:
+        report.fail("W1", claim_id, f"{label} manifest will not parse: {exc}")
+        return None
+    if not isinstance(manifest, dict) or set(manifest) != MANIFEST_KEYS:
+        report.fail(
+            "W1", claim_id, f"{label} manifest keys are not exactly {sorted(MANIFEST_KEYS)}"
+        )
+        return None
+    if manifest["schema"] != MANIFEST_SCHEMA:
+        report.fail(
+            "W1", claim_id,
+            f"{label} manifest is schema {manifest['schema']!r}, not {MANIFEST_SCHEMA!r}",
+        )
+        return None
+
+    problems: list[str] = []
+    for field in ("N", "k", "l", "n_cubes"):
+        value = manifest[field]
+        if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+            problems.append(f"{label} {field} must be a positive integer, got {value!r}")
+    if manifest["encoder"] not in ENCODERS:
+        problems.append(f"{label} names unknown encoder {manifest['encoder']!r}")
+    if not isinstance(manifest["symmetry_break"], bool):
+        problems.append(f"{label} symmetry_break must be true or false")
+    if not is_hex(manifest["cubes_sha256"], 64):
+        problems.append(f"{label} cubes_sha256 is not a sha256 hex digest")
+    # Bookkeeping the gate cannot check: it runs on a checkout that need not be
+    # a git repository. It is required to be well formed so that it can be
+    # looked up by hand, and it is never treated as evidence.
+    if not is_hex(manifest["snapshot_commit"], 40):
+        problems.append(f"{label} snapshot_commit is not a 40-character commit id")
+    base = manifest["base"]
+    if not isinstance(base, dict) or set(base) != MANIFEST_BASE_KEYS:
+        problems.append(f"{label} base must hold exactly {sorted(MANIFEST_BASE_KEYS)}")
+    else:
+        for field in ("n_vars", "n_clauses"):
+            if isinstance(base[field], bool) or not isinstance(base[field], int):
+                problems.append(f"{label} base.{field} must be an integer")
+        if not is_hex(base["sha256"], 64):
+            problems.append(f"{label} base.sha256 is not a sha256 hex digest")
+    if problems:
+        report_examples(report, "W1", claim_id, problems)
+        return None
+    return manifest
+
+
+def read_verdicts(
+    root: Path, claim_id: str, label: str, verdicts_rel: object,
+    n_cubes: int, report: Report,
+) -> dict[int, Verdict] | None:
+    """W3, first half: load one verdict per cube id, or say what is wrong."""
+    try:
+        directory = artifact_path(root, verdicts_rel, f"{label} verdicts directory", WAVES_DIR)
+    except ArtifactPathError as exc:
+        report.fail("W3", claim_id, str(exc))
+        return None
+    if not directory.is_dir():
+        report.fail("W3", claim_id, f"{label} verdicts directory {verdicts_rel} is not a directory")
+        return None
+
+    verdicts: dict[int, Verdict] = {}
+    problems: list[str] = []
+    for path in sorted(directory.iterdir()):
+        if path.is_dir() or path.suffix.lower() != ".json":
+            report.warn(f"{path.relative_to(root).as_posix()} is not a wave verdict")
+            continue
+        try:
+            document = load_json(path)
+        except (ValueError, UnicodeDecodeError) as exc:
+            problems.append(f"{label}: verdict {path.name} will not parse: {exc}")
+            continue
+        if not isinstance(document, dict) or set(document) != VERDICT_KEYS:
+            problems.append(
+                f"{label}: verdict {path.name} keys are not exactly {sorted(VERDICT_KEYS)}"
+            )
+            continue
+        cube = document["cube"]
+        if isinstance(cube, bool) or not isinstance(cube, int) or not 0 <= cube < n_cubes:
+            problems.append(
+                f"{label}: verdict {path.name} has cube {cube!r}, outside 0..{n_cubes - 1}"
+            )
+            continue
+        if cube in verdicts:
+            problems.append(f"{label}: cube {cube} has more than one verdict on record")
+            continue
+        lits = document["lits"]
+        if not isinstance(lits, list) or not all(
+            isinstance(x, int) and not isinstance(x, bool) for x in lits
+        ):
+            problems.append(f"{label}: verdict for cube {cube} has no list of literals")
+            continue
+        verdicts[cube] = Verdict(
+            list(lits), document["rc"], document["drat_sha256"], document["drat_bytes"]
+        )
+
+    if problems:
+        report_examples(report, "W3", claim_id, problems)
+        return None
+    return verdicts
+
+
+def check_transcripts(
+    root: Path, claim_id: str, label: str, transcripts_rel: object,
+    verdicts: dict[int, Verdict], n_cubes: int, report: Report,
+) -> dict[int, tuple[Path, str]] | None:
+    """W4: one transcript line per cube, each about this cube's proof.
+
+    Returns ``{cube: (proof path, proof sha256)}`` when the whole set is sound,
+    else None. The gate never opens a proof here - a ``.drat.gz`` is the
+    checker's business, and ``--reverify-drat`` is where a checker is run.
+    """
+    try:
+        path = artifact_path(root, transcripts_rel, f"{label} transcripts", WAVES_DIR)
+    except ArtifactPathError as exc:
+        report.fail("W4", claim_id, str(exc))
+        return None
+    if not path.is_file():
+        report.fail("W4", claim_id, f"{label} transcripts {transcripts_rel} does not exist")
+        return None
+    try:
+        text = path.read_bytes().decode("ascii")
+    except (OSError, UnicodeDecodeError) as exc:
+        report.fail("W4", claim_id, f"{label} transcripts will not read as ASCII: {exc}")
+        return None
+
+    entries: dict[int, dict] = {}
+    problems: list[str] = []
+    for number, raw in enumerate(text.splitlines(), start=1):
+        if not raw.strip():
+            continue
+        try:
+            line = json.loads(raw)
+        except ValueError as exc:
+            problems.append(f"{label}: transcript line {number} will not parse: {exc}")
+            continue
+        if not isinstance(line, dict) or set(line) != TRANSCRIPT_KEYS:
+            problems.append(
+                f"{label}: transcript line {number} keys are not exactly "
+                f"{sorted(TRANSCRIPT_KEYS)}"
+            )
+            continue
+        cube = line["cube"]
+        if isinstance(cube, bool) or not isinstance(cube, int) or not 0 <= cube < n_cubes:
+            problems.append(
+                f"{label}: transcript line {number} has cube {cube!r}, outside 0..{n_cubes - 1}"
+            )
+            continue
+        if cube in entries:
+            problems.append(f"{label}: cube {cube} has more than one transcript line")
+            continue
+        entries[cube] = line
+
+    proofs: dict[int, tuple[Path, str]] = {}
+    for cube in range(n_cubes):
+        line = entries.get(cube)
+        if line is None:
+            problems.append(f"{label}: cube {cube} has no transcript line")
+            continue
+        verdict = verdicts.get(cube)
+        if verdict is not None:
+            if not is_hex(line["drat_sha256"], 64) or line["drat_sha256"] != verdict.drat_sha256:
+                problems.append(
+                    f"{label}: cube {cube} transcript records proof sha256 "
+                    f"{str(line['drat_sha256'])[:16]}, the verdict records "
+                    f"{str(verdict.drat_sha256)[:16]}"
+                )
+                continue
+            if line["drat_bytes"] != verdict.drat_bytes:
+                problems.append(
+                    f"{label}: cube {cube} transcript and verdict disagree on the proof size"
+                )
+                continue
+        if line["verdict"] != "s VERIFIED":
+            problems.append(
+                f"{label}: cube {cube} transcript verdict is {line['verdict']!r}, not 's VERIFIED'"
+            )
+            continue
+        if not isinstance(line["checker"], str) or not line["checker"].strip():
+            problems.append(f"{label}: cube {cube} transcript names no checker")
+            continue
+        try:
+            proof = artifact_path(
+                root, line["proof_path_rel"], f"{label} cube {cube} proof",
+                EVIDENCE_DIR, committed=False,
+            )
+        except ArtifactPathError as exc:
+            problems.append(str(exc))
+            continue
+        if not str(line["proof_path_rel"]).endswith(PROOF_SUFFIX):
+            problems.append(
+                f"{label}: cube {cube} proof {line['proof_path_rel']} does not end {PROOF_SUFFIX}"
+            )
+            continue
+        proofs[cube] = (proof, line["drat_sha256"])
+
+    if problems:
+        report_examples(report, "W4", claim_id, problems)
+        return None
+    return proofs
+
+
+def reverify_wave(
+    root: Path, claim_id: str, label: str, manifest: dict, split: list[int],
+    proofs: dict[int, tuple[Path, str]], report: Report,
+) -> bool:
+    """Re-run the checker on every proof this wave still has on disk.
+
+    Each proof is decompressed into a temp directory under the repository's
+    gitignored ``scratch/``, hashed against what the transcript recorded, and
+    fed to the checker with the cube instance rebuilt beside it. This is a full
+    re-check: one cube instance is written per proof, so it costs the base
+    instance once per cube. On a wave of thousands that is a job for a machine
+    with time, which is why it is opt-in and CI never asks for it.
+    """
+    binary = find_drat_trim()
+    if binary is None:
+        report.info(f"{claim_id}: --reverify-drat asked for, no drat-trim binary found")
+        return True
+
+    scratch = root / "scratch"
+    scratch.mkdir(parents=True, exist_ok=True)
+    module = ENCODERS[manifest["encoder"]]
+    absent = 0
+    with tempfile.TemporaryDirectory(prefix="nk2wave-", dir=scratch) as work:
+        workdir = Path(work)
+        n_vars, clauses = module.build(
+            int(manifest["N"]), int(manifest["k"]), int(manifest["l"]),
+            symmetry_break=bool(manifest["symmetry_break"]),
+        )
+        base = write_cnf(workdir / "base.cnf", n_vars, clauses)
+        for cube in sorted(proofs):
+            proof_gz, recorded_sha = proofs[cube]
+            if not proof_gz.is_file():
+                absent += 1
+                continue
+            try:
+                with gzip.open(proof_gz, "rb") as source:
+                    raw = source.read()
+            except (OSError, EOFError) as exc:  # BadGzipFile is an OSError
+                report.fail(
+                    "W4", claim_id, f"{label}: cube {cube} proof will not decompress: {exc}"
+                )
+                return False
+            if sha256_bytes(raw) != recorded_sha:
+                report.fail(
+                    "W4", claim_id,
+                    f"{label}: cube {cube} proof on disk is not the one the transcript records",
+                )
+                return False
+            proof_path = workdir / "cube.drat"
+            proof_path.write_bytes(raw)
+            instance = write_cube_cnf(base["path"], split, cube, workdir / "cube.cnf")
+            completed = subprocess.run(
+                [binary, str(instance["path"]), str(proof_path)],
+                capture_output=True, text=True, check=False,
+            )
+            if completed.returncode != 0 or "s VERIFIED" not in completed.stdout:
+                report.fail(
+                    "W4", claim_id,
+                    f"{label}: cube {cube} did not re-verify (rc {completed.returncode})",
+                )
+                return False
+    if absent:
+        report.info(f"{claim_id}: {label}: {absent} proof(s) are not on disk and were not re-run")
+    return True
+
+
+def verify_wave(
+    root: Path, claim_id: str, label: str, manifest_rel: object, verdicts_rel: object,
+    transcripts_rel: object, reverify: bool, report: Report,
+) -> WaveCheck:
+    """W1 to W4 over one wave block."""
+    manifest = read_manifest(root, claim_id, label, manifest_rel, report)
+    if manifest is None:
+        return WaveCheck(False, None, False)
+
+    # W1: the split has to be a set of distinct main variables. var(x_n) = n in
+    # every encoder, so 1..N are the only variables whose meaning is shared;
+    # splitting on an auxiliary would make the cube set encoder-specific and the
+    # confirming wave could not use it.
+    try:
+        check_split(manifest["split_vars"], int(manifest["N"]))
+    except CubeError as exc:
+        report.fail("W1", claim_id, f"{label} split is not usable: {exc}")
+        return WaveCheck(False, manifest, False)
+    split = list(manifest["split_vars"])
+    n_cubes = 1 << len(split)
+    if manifest["n_cubes"] != n_cubes:
+        report.fail(
+            "W1", claim_id,
+            f"{label} records {manifest['n_cubes']} cubes; a split of {len(split)} variables "
+            f"has {n_cubes}",
+        )
+        return WaveCheck(False, manifest, False)
+
+    # W1: the base instance every cube was derived from has to regenerate here.
+    try:
+        sha, n_vars, n_clauses = regenerate(
+            int(manifest["N"]), int(manifest["k"]), int(manifest["l"]),
+            str(manifest["encoder"]), bool(manifest["symmetry_break"]),
+        )
+    except (ValueError, KeyError, TypeError) as exc:
+        report.fail("W1", claim_id, f"{label} base instance will not regenerate: {exc}")
+        return WaveCheck(False, manifest, False)
+    base = manifest["base"]
+    if (sha, n_vars, n_clauses) != (base["sha256"], base["n_vars"], base["n_clauses"]):
+        report.fail(
+            "W1", claim_id,
+            f"{label} base instance does not regenerate to what the manifest records: "
+            f"recorded {str(base['sha256'])[:16]} / {base['n_vars']} vars / "
+            f"{base['n_clauses']} clauses, regenerated {sha[:16]} / {n_vars} / {n_clauses}",
+        )
+        return WaveCheck(False, manifest, False)
+
+    # W2: completeness by construction. The cube set is re-derived from the
+    # split and hashed; the file the wave actually ran from is never read, so a
+    # cube set that skips a case cannot agree with a hash that covers them all.
+    if manifest["cube_construction"] != CONSTRUCTION:
+        report.fail(
+            "W2", claim_id,
+            f"{label} was cut by {manifest['cube_construction']!r}; this gate re-derives "
+            f"{CONSTRUCTION!r} and refuses to guess at another construction",
+        )
+        return WaveCheck(False, manifest, False)
+    derived = cubes_sha256(split)
+    if derived != manifest["cubes_sha256"]:
+        report.fail(
+            "W2", claim_id,
+            f"{label} cube set sha256 mismatch: recorded {str(manifest['cubes_sha256'])[:16]}, "
+            f"re-derived from split_vars {derived[:16]} - the cubes that ran are not every "
+            "assignment of this split",
+        )
+        return WaveCheck(False, manifest, False)
+
+    # W3: every cube id, every one of them rc 20, each over its own literals.
+    verdicts = read_verdicts(root, claim_id, label, verdicts_rel, n_cubes, report)
+    if verdicts is None:
+        return WaveCheck(False, manifest, False)
+    problems: list[str] = []
+    for cube in range(n_cubes):
+        verdict = verdicts.get(cube)
+        if verdict is None:
+            problems.append(f"{label}: cube {cube} has no verdict")
+            continue
+        if verdict.rc != 20 or isinstance(verdict.rc, bool):
+            problems.append(
+                f"{label}: cube {cube} came back rc {verdict.rc!r}; only rc 20 is UNSAT, and a "
+                "cube that is not UNSAT leaves the decomposition undecided"
+            )
+            continue
+        if verdict.lits != cube_literals(split, cube):
+            problems.append(
+                f"{label}: cube {cube} records lits {verdict.lits}, the construction gives "
+                f"{cube_literals(split, cube)}"
+            )
+    if problems:
+        report_examples(report, "W3", claim_id, problems)
+        return WaveCheck(False, manifest, False)
+
+    # W4: transcripts are optional. Absent, the wave stands on solver verdicts.
+    if transcripts_rel is None:
+        return WaveCheck(True, manifest, False)
+    proofs = check_transcripts(
+        root, claim_id, label, transcripts_rel, verdicts, n_cubes, report
+    )
+    if proofs is None:
+        return WaveCheck(True, manifest, False)
+    if reverify and not reverify_wave(root, claim_id, label, manifest, split, proofs, report):
+        return WaveCheck(True, manifest, False)
+    return WaveCheck(True, manifest, True)
+
+
+# --- W5 ---------------------------------------------------------------------
+
+
+def rule_w5(claim: dict, claim_id: str, wave: dict | None, manifest: dict | None,
+            report: Report) -> None:
+    """The claim and the wave have to be about the same instance, and the kind
+    has to say so."""
+    kind = claim["kind"]
+    if wave is None:
+        if kind == "upper_bound_wave":
+            report.fail("W5", claim_id, "kind upper_bound_wave carries no wave")
+        return
+    if kind == "lower_bound":
+        report.fail(
+            "W5", claim_id,
+            "a lower bound is established by a witness, not by an UNSAT decomposition; "
+            "this claim carries a wave",
+        )
+    elif kind == "upper_bound":
+        report.fail(
+            "W5", claim_id,
+            "an upper bound resting on a cube wave is declared kind upper_bound_wave, so that "
+            "what carries it is visible in the claim itself",
+        )
+    if manifest is None:
+        return
+    want = (claim["value"], claim["k"], claim["l"])
+    got = (manifest["N"], manifest["k"], manifest["l"])
+    if got != want:
+        report.fail(
+            "W5", claim_id, f"wave manifest is (N,k,l)={got}, the claim needs {want}"
+        )
+
+
+# --- W6 ---------------------------------------------------------------------
+
+
+def rule_w6(
+    claim: dict, claim_id: str, root: Path, wave: dict, primary: WaveCheck,
+    run_encoders: set[str], reverify: bool, report: Report,
+) -> bool:
+    """No exact claim rests on one encoding, wave or no wave.
+
+    A DRAT proof certifies that a CNF is unsatisfiable. It says nothing about
+    whether that CNF is the problem, so a wave - however completely decomposed
+    and however thoroughly proof-checked - carries exactly one encoder's opinion
+    of what avoidance means. G3 answers that for monolithic runs by demanding
+    two of them; this is the same demand, in the shape a wave comes in.
+    """
+    confirm = wave["confirm"]
+    primary_encoder = primary.manifest["encoder"] if primary.manifest else None
+    if confirm is None:
+        if claim["kind"] == "exact":
+            report.fail(
+                "W6", claim_id,
+                "an exact claim resting on a cube wave needs wave.confirm: either a second "
+                "complete wave from a different encoder, or unsat_runs from one. Declaring a "
+                "lower evidence_level does not buy the word 'exact'",
+            )
+        return False
+
+    if confirm["kind"] == "unsat_runs":
+        others = sorted(run_encoders - {primary_encoder})
+        if not others:
+            report.fail(
+                "W6", claim_id,
+                f"wave.confirm names unsat_runs, but no verified run-log uses an encoder other "
+                f"than the wave's {primary_encoder!r}",
+            )
+            return False
+        return True
+
+    second = verify_wave(
+        root, claim_id, "confirm wave", confirm["manifest"], confirm["verdicts_dir"],
+        confirm["transcripts"], reverify, report,
+    )
+    if not second.ok or second.manifest is None:
+        return False
+    if second.manifest["encoder"] == primary_encoder:
+        report.fail(
+            "W6", claim_id,
+            f"the confirming wave uses the same encoder ({primary_encoder!r}); a second run of "
+            "one encoding confirms nothing about the encoding",
+        )
+        return False
+    want = (claim["value"], claim["k"], claim["l"])
+    got = (second.manifest["N"], second.manifest["k"], second.manifest["l"])
+    if got != want:
+        report.fail(
+            "W6", claim_id, f"the confirming wave is (N,k,l)={got}, the claim needs {want}"
+        )
+        return False
+    return True
+
+
+def wave_evidence_level(transcripts_verified: bool, confirmed: bool) -> int:
+    """Where a verified wave lands on the ladder in LEVELS."""
+    if confirmed:
+        return LEVEL_DRAT_TRANSCRIPT if transcripts_verified else LEVEL_UNSAT_DUAL
+    return LEVEL_WAVE_DRAT if transcripts_verified else LEVEL_UNSAT_WAVE
+
+
 # --- driver -----------------------------------------------------------------
 
 
-def referenced_paths(claims: list[dict]) -> set[str]:
+def referenced_paths(claims: list[dict]) -> tuple[set[str], set[str]]:
+    """Paths claims point at, and directory prefixes they point into.
+
+    A wave is referenced as a unit: the manifest names a directory that holds
+    the verdicts, the transcripts and, while they last, the proofs. Listing
+    every file of it individually would put tens of thousands of strings in a
+    claim to no purpose.
+    """
     seen: set[str] = set()
+    prefixes: set[str] = set()
     for claim in claims:
         witness = claim.get("witness")
         if isinstance(witness, dict) and isinstance(witness.get("path"), str):
@@ -643,17 +1303,37 @@ def referenced_paths(claims: list[dict]) -> set[str]:
         drat = claim.get("drat")
         if isinstance(drat, dict) and isinstance(drat.get("transcript"), str):
             seen.add(drat["transcript"])
-    return seen
+        wave = claim.get("wave")
+        if not isinstance(wave, dict):
+            continue
+        for block in (wave, wave.get("confirm")):
+            if not isinstance(block, dict):
+                continue
+            for key in ("manifest", "verdicts_dir", "transcripts"):
+                value = block.get(key)
+                if not isinstance(value, str) or not value:
+                    continue
+                seen.add(value)
+                if key == "manifest":
+                    parent = PurePosixPath(value).parent.as_posix()
+                    if parent not in (".", "", "/"):
+                        prefixes.add(parent)
+                elif key == "verdicts_dir":
+                    prefixes.add(value)
+    return seen, prefixes
 
 
 def warn_unreferenced(root: Path, claims: list[dict], report: Report) -> None:
-    referenced = referenced_paths(claims)
+    referenced, prefixes = referenced_paths(claims)
     if not (root / "evidence").is_dir():
         return
     for path in scanned_files(root):
         rel = path.relative_to(root).as_posix()
-        if rel.startswith("evidence/") and rel not in referenced:
-            report.warn(f"artifact {rel} is referenced by no claim")
+        if not rel.startswith("evidence/") or rel in referenced:
+            continue
+        if any(rel.startswith(f"{prefix}/") for prefix in prefixes):
+            continue
+        report.warn(f"artifact {rel} is referenced by no claim")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -713,22 +1393,40 @@ def main(argv: list[str] | None = None) -> int:
         seen_ids.add(claim_id)
 
         has_witness = rule_g2(claim, claim_id, root, report)
-        dual, instance_shas = rule_g3(claim, claim_id, root, report)
+        dual, instance_shas, run_encoders = rule_g3(claim, claim_id, root, report)
         drat_level = rule_g4(
             claim, claim_id, root, instance_shas, args.reverify_drat, report
         )
+
+        wave = claim.get("wave")
+        wave_level = 0
+        if wave is None:
+            rule_w5(claim, claim_id, None, None, report)
+        else:
+            primary = verify_wave(
+                root, claim_id, "wave", wave["manifest"], wave["verdicts_dir"],
+                wave["transcripts"], args.reverify_drat, report,
+            )
+            rule_w5(claim, claim_id, wave, primary.manifest, report)
+            confirmed = rule_w6(
+                claim, claim_id, root, wave, primary, run_encoders, args.reverify_drat, report
+            )
+            if primary.ok:
+                wave_level = wave_evidence_level(primary.transcripts_verified, confirmed)
 
         rule_g5_claim(claim, claim_id, report)
 
         achieved = 0
         if has_witness:
-            achieved = 1
+            achieved = LEVEL_WITNESS
         if dual:
-            achieved = max(achieved, 2)
+            achieved = max(achieved, LEVEL_UNSAT_DUAL)
         if drat_level and dual:
             # A DRAT proof certifies an UNSAT run, so it can only lift a claim
             # that already has the two encoders G3 requires behind it.
             achieved = max(achieved, drat_level)
+        if wave_level:
+            achieved = max(achieved, wave_level)
         # G7 only speaks when nothing else about the claim is already broken,
         # so one bad fixture reports one rule rather than a cascade.
         if report.clean(claim_id):

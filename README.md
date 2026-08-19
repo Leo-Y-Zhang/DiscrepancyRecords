@@ -3,11 +3,13 @@
 A SAT-based campaign against `N(k,2)` - Erdos problem #176, OEIS A398541 - with
 a cold verification gate that has to pass before this repo asserts anything.
 
-**Status: campaign in progress. No new term and no improved bound are claimed.**
-The two claims currently on record are `N(3,2) = 9`, which is published, and the
-published lower bound `N(17,2) >= 273`, which is credited to its author below.
-This README will say otherwise only when `gate/verify_all.py` exits 0 on a claim
-that says otherwise.
+**Status: campaign in progress. No new term is claimed.** Three claims are on
+record: `N(3,2) = 9`, which is published; the published lower bound
+`N(17,2) >= 273`, credited to its author below; and `N(17,2) >= 274`, which
+rests on an avoiding coloring of `{1..273}` found here and re-checked by this
+repository's own evaluator. No upper bound on `N(17,2)` is claimed at all. This
+README will say otherwise only when `gate/verify_all.py` exits 0 on a claim that
+says otherwise.
 
 ## The quantity
 
@@ -31,9 +33,11 @@ not, and that is the target of this campaign.
   different encodings behind any UNSAT claim. It runs with no solver installed.
 - `claims/` - what this repo asserts, and the evidence level of each assertion.
 - `evidence/` - witnesses and run-logs, plus drat-trim transcripts once proofs
-  are emitted; no transcript is on record yet, and both claims carry a null
+  are emitted; no transcript is on record yet, and every claim carries a null
   `drat` block. DIMACS instances and DRAT proofs are not committed; they are
-  regenerated and hash-matched.
+  regenerated and hash-matched. A cube-and-conquer wave's manifest, per-cube
+  verdicts and per-cube transcripts belong under `evidence/waves/`; no wave is
+  on record, so that directory does not exist yet.
 - `docs/PRD.md`, `docs/TDD.md` - why and how, written before the code.
 
 ## Running it
@@ -77,9 +81,26 @@ CPython 3.13 installation; `python -V` printing a version is the check.
 | G5 | An anchor file that disagrees with the published terms, a claim that contradicts its anchor, or an exact term that is not contiguous with `a(16)`. |
 | G6 | Any committed artifact holding an absolute path or a non-ASCII byte. |
 | G7 | Any claim that declares more evidence than its artifacts support. |
+| W1-W6 | A cube-and-conquer wave whose base instance does not regenerate, whose cube set is not every case, that has a cube missing or not returned UNSAT, whose transcripts do not match its verdicts, that is not about the instance the claim is about, or that is asked to carry an `exact` claim on one encoder. |
 
-Each rule has a fixture under `tests/fixtures/` that is asserted to make the
-gate exit non-zero.
+Each rule has a fixture that is asserted to make the gate exit non-zero.
+
+## Cube-and-conquer waves
+
+An upper bound at the scale this campaign is aiming for is not one solver run;
+it is thousands of cubes, each the instance plus a few unit clauses. That turns
+the gate's job from "did the solver say 20" into "are these cubes *every* case,
+and did every one of them say 20". So a wave claim records a manifest - the
+base instance's parameters and hash, the split variables, the cube count - and
+one verdict per cube, and the gate re-derives the entire cube set from the split
+and hashes it rather than reading a cubes file, because a wave that dropped a
+case would write a shorter file and a hash that matches it. An `exact` claim
+resting on a wave additionally needs a second complete wave from a different
+encoder, or a monolithic run from one: a DRAT proof certifies that a CNF is
+unsatisfiable and never that the CNF is the problem, so no amount of
+proof-checking substitutes for a second encoding. **No wave claim is on record
+in this repository. Nothing here says a wave has completed, and the gate is
+where that will become visible if one ever does.**
 
 G2, G3 and G4 share one more rule: every path a claim or a transcript records
 must be a plain repo-relative path to an artifact in the directory that kind of

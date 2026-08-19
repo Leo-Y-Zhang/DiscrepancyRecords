@@ -198,7 +198,14 @@ def test_understated_evidence_is_info_not_failure(capsys, tmp_path):
 
 
 def test_levels_are_ordered_as_documented():
-    assert LEVELS == ("witness", "unsat-dual", "drat-transcript", "drat-reverified")
+    assert LEVELS == (
+        "witness",
+        "unsat-wave",
+        "wave-drat-verified",
+        "unsat-dual",
+        "drat-transcript",
+        "drat-reverified",
+    )
 
 
 def test_gate_anchor_literal_is_the_published_data():

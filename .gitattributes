@@ -10,6 +10,8 @@
 *.md    text eol=lf
 *.py    text eol=lf
 *.yml   text eol=lf
+*.jsonl text eol=lf
 
 # Proof objects are opaque bytes and are never committed anyway.
 *.drat  binary
+*.gz    binary
