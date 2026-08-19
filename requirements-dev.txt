@@ -1,0 +1,9 @@
+# Linters are pinned: a gate whose verdict depends on the day you run it is not
+# a gate. The test runner is left unpinned so CI picks up runner fixes.
+pytest
+ruff==0.16.3
+
+# CI-only SAT engine. It decides the tiny anchor instances (k=3, N=8 and N=9)
+# and the exhaustive encoder-equivalence matrix, so CI needs no external solver
+# binary. The campaign itself uses a standalone solver via nk2/solve.py.
+python-sat==1.9.dev15
