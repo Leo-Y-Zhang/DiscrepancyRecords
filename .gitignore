@@ -4,6 +4,11 @@ evidence/drat/
 evidence/**/*.cnf
 evidence/*.cnf
 
+# The DIMACS writer streams the body to a sibling temp file and unlinks it in a
+# finally block. A killed run skips that, and the leftover is named
+# `<instance>.cnf.body.tmp`, which the `*.cnf` patterns above do not match.
+*.body.tmp
+
 # Local scratch
 scratch/
 

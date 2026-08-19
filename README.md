@@ -30,8 +30,10 @@ not, and that is the target of this campaign.
   each claimed instance and compares sha256, and requires two structurally
   different encodings behind any UNSAT claim. It runs with no solver installed.
 - `claims/` - what this repo asserts, and the evidence level of each assertion.
-- `evidence/` - witnesses, run-logs and proof transcripts. DIMACS instances and
-  DRAT proofs are not committed; they are regenerated and hash-matched.
+- `evidence/` - witnesses and run-logs, plus drat-trim transcripts once proofs
+  are emitted; no transcript is on record yet, and both claims carry a null
+  `drat` block. DIMACS instances and DRAT proofs are not committed; they are
+  regenerated and hash-matched.
 - `docs/PRD.md`, `docs/TDD.md` - why and how, written before the code.
 
 ## Running it
