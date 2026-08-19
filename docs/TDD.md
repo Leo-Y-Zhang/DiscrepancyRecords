@@ -67,7 +67,8 @@ evidence_level, prior_art, notes}`.
 null on an upper bound; `drat` null everywhere while proofs are deferred;
 `unsat_runs` empty on a lower bound or on a wave-carried bound; a run-log with
 `rc: null` (timeout or kill); a per-cube verdict with `rc: null` for the same
-reason; `drat_sha256` null in a verdict when the wave ran without proofs; a
+reason; a verdict with **no `drat_sha256` and no `drat_bytes` key at all**, or
+with the pair present and null, when that cube was solved without a proof; a
 claim whose `k` has no anchor (`k >= 17`).
 
 **`wave` is the one optional key.** Every claim written before waves existed
@@ -100,9 +101,23 @@ regeneration for a wave exactly as G3 does for a monolithic run.
 **Manifest** `{schema:"cube-wave.v2", N, k, l, encoder, symmetry_break,
 snapshot_commit, base:{n_vars,n_clauses,sha256}, split_vars:[int], n_cubes,
 cubes_sha256, cube_construction}`. **Verdict**, one per cube, as a file or as a
-line: `{cube, lits, rc, wall_s, drat_sha256, drat_bytes}`. **Transcript**, one
-JSONL line per cube: `{cube, drat_sha256, drat_bytes, proof_path_rel, checker,
-verdict}`.
+line: `{cube, lits, rc, wall_s}` plus **optionally** `{drat_sha256,
+drat_bytes}`. **Transcript**, one JSONL line per cube: `{cube, drat_sha256,
+drat_bytes, proof_path_rel, checker, verdict}`.
+
+**The two proof keys are optional per cube, and a wave may be mixed.** The
+driver's `--no-proof` mode - which is how a second-encoder *confirmation* wave
+is run, since the cheapest honest confirmation is a second encoding rather than
+a second proof - writes `{cube, lits, rc, wall_s}` and stops: there was no
+proof, so there is no digest, and leaving the pair out is the record of what
+happened rather than a defect. A campaign interrupted with proofs on and
+resumed with them off holds both shapes at once, and that is legal. This was
+not theorized: `scratch/wave274` holds 75 four-key verdicts beside 42 six-key
+ones, and a reader demanding six keys refused the wave the tool exists to
+import. Absent and null both mean *no proof hash on record*, and both can only
+ever lower what a wave is worth - see the tier rule below, which is what keeps
+that safe. Every other key is still required, and any key not in the schema is
+still refused.
 
 **Claim block** `wave: {manifest, verdicts_dir, transcripts:path|null,
 confirm:null | {kind:"wave", manifest, verdicts_dir, transcripts} |
@@ -266,8 +281,8 @@ rule passes; failures print `FAIL <rule> <claim-id> <reason>`.
 | G7 | Achieved evidence level `>=` declared `evidence_level`; overstatement fails, understatement prints INFO. Levels below. |
 | W1 | The manifest is `evidence/waves/<name>/manifest.json` - **that directory is the wave**, and W3 and W4 read nothing from outside it - parses, has exactly the `cube-wave.v2` keys, and its base instance **regenerates** from `(N,k,l,encoder,symmetry_break)` to the recorded sha256, var count and clause count - the same machinery G3 uses. `split_vars` are distinct main variables in `1..N`; `n_cubes == 2**len(split_vars)`. |
 | W2 | The cube set is complete **by construction**: the gate re-derives every cube from `split_vars` and hashes the result against `cubes_sha256`. No cubes file is read, and an unrecognised `cube_construction` fails rather than being guessed at. |
-| W3 | The verdicts are read from inside the wave's own directory, from the directory or the `.jsonl` the claim names. Every cube id `0..n_cubes-1` has exactly one verdict, each with `rc == 20` - any other value, `null` included, is UNKNOWN and leaves the decomposition open - and each verdict's `lits` are the construction's literals for that id. A second verdict for one cube fails, a cube id outside the range fails, and in the consolidated form **a line that is not a verdict is a failure and never a skip** - a reader that skips one passes a wave whose record is short by however many lines a dying machine truncated. |
-| W4 | If `transcripts` is present: it and every proof it names sit inside the wave's own directory; one line per cube, each line's `drat_sha256` and `drat_bytes` equal to that cube's verdict, `verdict` exactly `s VERIFIED`, a checker named, and a `proof_path_rel` ending `.drat.gz`. The gate does not decompress a proof; that is the checker pass. |
+| W3 | The verdicts are read from inside the wave's own directory, from the directory or the `.jsonl` the claim names. Every cube id `0..n_cubes-1` has exactly one verdict, each with `rc == 20` - any other value, `null` included, is UNKNOWN and leaves the decomposition open - and each verdict's `lits` are the construction's literals for that id. `cube`, `lits`, `rc` and `wall_s` are required; the two proof keys are optional and a wave may be mixed. A second verdict for one cube fails, a cube id outside the range fails, and in the consolidated form **a line that is not a verdict is a failure and never a skip** - a reader that skips one passes a wave whose record is short by however many lines a dying machine truncated. |
+| W4 | If `transcripts` is present: it and every proof it names sit inside the wave's own directory; **one line per cube of the wave**, each line's `drat_sha256` a real 64-hex digest equal to that cube's verdict digest - so a cube whose verdict recorded none cannot be covered - `drat_bytes` equal with it, `verdict` exactly `s VERIFIED`, a checker named, and a `proof_path_rel` ending `.drat.gz`. Coverage of only some cubes fails; it does not downgrade. The gate does not decompress a proof; that is the checker pass. |
 | W5 | The claim and the manifest are about one instance: `value == manifest.N`, `k` and `l` equal. `upper_bound_wave` needs a wave; `lower_bound` and plain `upper_bound` may not carry one; `exact` needs both sides - a witness at `V-1` and a wave (or two-encoder `unsat_runs`) at `V`. |
 | W6 | **No exact claim rests on one encoding.** An `exact` claim carrying a wave needs `wave.confirm`: a second complete wave from a *different* encoder (transcripts optional, W1-W3 checked just as hard), or `unsat_runs` holding a verified run-log from a different encoder. Absent that, the claim fails outright - declaring a lower `evidence_level`, or having the lower side on record, does not buy the word "exact". Confirmation is what lifts a wave to `unsat-dual` and above. |
 
@@ -282,7 +297,17 @@ repository's soundness argument rests on, so `wave-drat-verified` sorts **below*
 `unsat-dual` - 16384 checked proofs of a wrong encoding are 16384 checked proofs
 of the wrong thing. A wave reaches `unsat-wave` bare, `wave-drat-verified` with
 full transcripts, `unsat-dual` when a second encoder confirms it, and
-`drat-transcript` with both. G7's semantics are unchanged: the declared level is
+`drat-transcript` with both.
+
+**The tier rule is what makes optional proof keys safe.**
+`wave-drat-verified` requires transcripts covering **every** cube of the wave,
+each carrying a real 64-hex sha256 that equals that cube's verdict digest. A
+wave with no transcripts, or one whose verdicts kept no digests, therefore
+cannot reach it however it is declared: nothing was checked, so the tier that
+says everything was checked is an overstatement and G7 refuses it. A wave with
+transcripts over only part of itself is a *failure*, not a downgrade - see the
+import section, where the same shape is refused a step earlier and for the same
+reason. G7's semantics are unchanged: the declared level is
 a floor on strength, so understating it is INFO and overstating it fails. There
 is no wave-reverified tier - `--reverify-drat` over a wave is a check that can
 fail, not a promotion.
@@ -336,6 +361,21 @@ checker's `s VERIFIED`, and a `drat_sha256` that **is a digest** and equals that
 cube's verdict, byte count with it. Anything else is refused with the cube
 numbers named, three at a time and then a count.
 
+**A verdict is `{cube, lits, rc, wall_s}`; the two proof keys are optional and
+may be missing from some cubes and not others.** Demanding all six is what
+refused the live `k=17` confirmation wave, which is honest and simply kept no
+proofs, so both readers take four keys and treat an absent digest exactly as
+they treat a null one. What stops that from being a hole is the **tier rule**,
+which is the same one the gate applies: `wave-drat-verified` needs a transcript
+line for *every* cube of the wave, each with a real 64-hex digest equal to that
+cube's verdict digest. A wave with no transcripts imports and stands at
+`unsat-wave`; a wave whose transcripts cover only some cubes is **refused**,
+naming how many cubes have no line, because silently importing it would hand
+back a wave the operator believes was checked in full when it was not. And the
+summary says which tier the source supports and why, so that a confirmation
+wave - which looks exactly like a certified one in a directory listing - cannot
+be mistaken for one without running the gate to find out.
+
 That the hash has to be a digest and not merely agree is the one place the two
 readers had drifted apart, and it cost a wave. A verdict-only campaign records
 `drat_sha256: null`, a checker wrapper run over it copies that null into every
@@ -382,7 +422,8 @@ proofs precisely so a wave's proofs can be deleted, and `--reverify-drat`
 reports the absent ones by count.
 
 Finally it prints the campaign totals - cubes, total and longest solver wall
-time, proof bytes, encoder, base sha256 - and the claim JSON to paste into
+time, proof bytes, how many cubes kept no proof at all, the tier that buys and
+why, encoder, base sha256 - and the claim JSON to paste into
 `claims/CLAIMS.json`, twice: as an `upper_bound_wave` standing on this wave
 alone, and as the `exact` claim it becomes once a second encoder's wave
 confirms it, with the confirming wave's name left as a placeholder and the two
@@ -413,6 +454,8 @@ Import a wave, then run the gate; nothing is evidence until that exits 0.
 | A consolidated `verdicts.jsonl` is truncated mid-append by a dying machine | nobody - the file still parses up to the break | W3: the last line is not a verdict and is a failure, not a skip; and the cubes after it have no verdict | re-import the wave from the source, which was never modified |
 | A wave is imported while it is still running | nobody, and the claim would say every cube came back UNSAT | `import_wave` reads every cube before writing anything and refuses, naming the missing ones | nothing to undo - it wrote nothing |
 | A verdict-only wave (no proof hashes) is run through a checker wrapper and imported as drat-verified | the gate, one step later than it should - W4 wants a digest, and `null == null` had satisfied the import | `import_wave` demands a digest where W4 demands one, so the wave is refused rather than written | it wrote nothing; before this it wrote a wave that had to be deleted by hand, since a second import is refused |
+| A wave is solved with `--no-proof`, so no verdict carries a digest, and a resumed one carries them for only some cubes | the operator, when a complete and honest wave is refused | it was not caught by design: run against `scratch/wave274` both readers demanded six keys and refused 75 of 117 verdicts | the pair is optional per cube in the gate and the import alike; such a wave imports and verifies at `unsat-wave` |
+| A checker is run over a mixed wave and leaves lines only for the cubes that kept a proof | nobody - a short transcripts file looks like a whole one, and the wave "was checked" | import refuses partial coverage and says how many cubes have no line; W4 fails the claim rather than downgrading it | check the remaining cubes, or import with no transcripts and stand at `unsat-wave` |
 | An import is pointed at a name that is a path (`--name ../x`) | nobody | the name must be a plain directory name, checked before any path is built | nothing to undo |
 
 ## Rollback
@@ -481,7 +524,13 @@ verdicts and pointed at the primary's (the tester's exploit, which bought an
 another wave's verdicts, its transcripts, or one of its proofs, and a manifest
 that is not the `manifest.json` of its own directory. Positive controls
 beside them: a confirmed wave, a wave confirmed by a monolithic run-log instead,
-and an `upper_bound_wave` standing alone on one encoder. Each of the four
+and an `upper_bound_wave` standing alone on one encoder. The proofless shapes
+get their own set, **in both storage forms because one reader serves both**: a
+wave whose verdicts carry no proof keys at all and a mixed wave carrying them
+for half its cubes each verify at `unsat-wave`, the same wave declaring
+`wave-drat-verified` fails G7, and a checker's line with no digest over a
+verdict with no digest fails W4 rather than agreeing with it - two absences
+compare equal, which is exactly why W4 demands a digest and not agreement. Each of the four
 level-earning shapes is asserted to reach its tier exactly, and to fail G7 one
 tier higher. `write_cube_cnf` is checked byte for byte against `write_cnf` fed
 the same clauses. `--reverify-drat` over a wave is driven by a **stub checker**
@@ -515,7 +564,15 @@ about another proof, a transcript recording no digest at all and one recording a
 digest the verdict never had, duplicate transcript line, duplicate verdict,
 `cube-wave.v1` manifest, unknown construction, unparseable verdict, source that
 is not a wave, name that is a path, destination already occupied), each asserted
-to write nothing; and four properties: the source is byte-identical afterwards,
+to write nothing. The `--no-proof` shapes are their own round trips: a source
+whose verdicts carry no proof keys, and a mixed one carrying them for two cubes
+of four, each import at `unsat-wave` and the gate must exit 0 on the fragment
+the tool printed; transcripts over that mixed wave covering only the two cubes
+that kept a proof are refused with a message naming how many cubes have no
+line; transcripts over a wave that kept no digests are refused whether the keys
+are absent or present and null; and the summary's tier line is read back and
+asserted to name the level and the reason, since a tier nobody prints is a tier
+the operator finds out about from the gate. Then four properties: the source is byte-identical afterwards,
 no `.drat.gz` is anywhere in the repository, `--dry-run` writes nothing at all,
 and two imports of one source produce identical bytes.
 
@@ -603,6 +660,11 @@ test never observed failing is decoration):
 | M58 | import writes the verdicts with unsorted keys (`json.dumps` without `sort_keys`) | the resumed source, whose own keys are not sorted |
 | M59 | import's consolidated reader accepts a cube id twice | the duplicate-line consolidated source |
 | M60 | import's consolidated reader skips a line it cannot read instead of failing | the truncated, blank and whitespace consolidated sources |
+| M61 | verdict reader demands the two proof keys (`set(document) != VERDICT_KEYS`) | the no-proof-keys and mixed wave fixtures, **both storage forms** - one reader serves both |
+| M62 | import demands the two proof keys | the no-proof-keys and mixed sources, which are the shape the live campaign writes |
+| M63 | import drops the cubes a transcripts file does not cover instead of refusing | the part-covered mixed source, which would otherwise import declaring `wave-drat-verified` |
+| M64 | verdict reader treats a missing required key as an absent proof key | the `wall_s`-removed line fixture |
+| M65 | import's summary names a tier from whether a transcripts file exists rather than from what it covers, or prints none at all | the tier-line tests over a checked and a proofless source |
 
 ## CI and environment
 

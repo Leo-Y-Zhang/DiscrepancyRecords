@@ -54,6 +54,17 @@ CONFIRM_VERDICTS_JSONL = f"{CONFIRM_DIR}/verdicts.jsonl"
 # sixteen thousand cubes has to be committed as.
 VERDICT_FORMS = ("dir", "jsonl")
 
+# What a verdict says about the proof of its cube. A wave solved with the
+# driver's --no-proof mode kept no proof, so it has no digest to record and
+# leaves the pair out; that is the honest shape and not a defect. `null` is the
+# older shape, where the keys are present and say nothing - importable as
+# unsat-wave, never as drat-verified, because a null is not a digest. A wave
+# interrupted in one mode and resumed in the other holds both.
+DIGESTS_REAL = "real"
+DIGESTS_NULL = "null"
+DIGESTS_ABSENT = "absent"
+DIGEST_STYLES = (DIGESTS_REAL, DIGESTS_NULL, DIGESTS_ABSENT)
+
 # A syntactically valid commit that is deliberately the null one: the gate
 # cannot check that a snapshot commit exists (it runs on a checkout that may not
 # be a git repository at all), and a fixture must not pretend otherwise.
@@ -122,23 +133,44 @@ def placeholder_proof(index: int) -> bytes:
     return f"c placeholder proof for cube {index}\n0\n".encode("ascii")
 
 
-def verdict_document(index: int, with_digests: bool = True) -> dict:
-    """One cube's verdict.
+def digest_style(proof_digests: object, index: int) -> str:
+    """Which of the three shapes cube ``index`` records its proof in.
 
-    ``with_digests`` false is the shape a verdict-only campaign writes - it kept
-    no proof, so it has no digest to record and says so with nulls rather than
-    inventing one. Such a wave can still be honest evidence; what it cannot be
-    is drat-verified.
+    ``proof_digests`` is one style for the whole wave, or the collection of
+    cubes that kept a proof - the rest then omit the pair, which is the mixed
+    wave a campaign interrupted and resumed in ``--no-proof`` mode leaves.
+    """
+    if isinstance(proof_digests, str):
+        if proof_digests not in DIGEST_STYLES:
+            raise ValueError(f"unknown digest style {proof_digests!r}; expected {DIGEST_STYLES}")
+        return proof_digests
+    return DIGESTS_REAL if index in proof_digests else DIGESTS_ABSENT
+
+
+def verdict_document(index: int, proof_digests: object = DIGESTS_REAL) -> dict:
+    """One cube's verdict, in whichever of the three proof shapes it kept.
+
+    A wave solved without proofs has no digest to record. Leaving the pair out
+    is what the driver writes and what this repository reads as "no proof on
+    record"; nulls are the older way of saying the same thing. Either way the
+    wave can be honest evidence, and either way what it cannot be is
+    drat-verified.
     """
     proof = placeholder_proof(index)
-    return {
+    document = {
         "cube": index,
         "lits": cube_literals(SPLIT, index),
         "rc": 20,
         "wall_s": 0.01,
-        "drat_sha256": hashlib.sha256(proof).hexdigest() if with_digests else None,
-        "drat_bytes": len(proof) if with_digests else None,
     }
+    style = digest_style(proof_digests, index)
+    if style == DIGESTS_REAL:
+        document["drat_sha256"] = hashlib.sha256(proof).hexdigest()
+        document["drat_bytes"] = len(proof)
+    elif style == DIGESTS_NULL:
+        document["drat_sha256"] = None
+        document["drat_bytes"] = None
+    return document
 
 
 def write_jsonl(path: Path, documents: list[dict], sort_keys: bool = True) -> None:
@@ -167,13 +199,15 @@ def write_wave(
     symmetry_break: bool,
     with_transcripts: bool,
     verdicts_form: str = "dir",
+    proof_digests: object = DIGESTS_REAL,
 ) -> None:
     """Write one complete, honest wave under ``directory``.
 
     ``verdicts_form`` is ``"dir"`` for one JSON file per cube or ``"jsonl"``
     for the consolidated file a wave of thousands of cubes is committed as.
     Both carry the same verdict objects, and the gate has to hold every W rule
-    identically over either.
+    identically over either. ``proof_digests`` is what each cube recorded about
+    its proof - see ``digest_style``.
     """
     if verdicts_form not in VERDICT_FORMS:
         raise ValueError(
@@ -184,12 +218,12 @@ def write_wave(
     write_json(root / directory / "manifest.json", manifest_document(encoder, symmetry_break))
 
     lines = []
-    verdicts = [verdict_document(index) for index in range(N_CUBES)]
+    verdicts = [verdict_document(index, proof_digests) for index in range(N_CUBES)]
     if verdicts_form == "jsonl":
         write_jsonl(root / directory / "verdicts.jsonl", verdicts)
     for index in range(N_CUBES):
         proof = placeholder_proof(index)
-        proof_sha = verdicts[index]["drat_sha256"]
+        proof_sha = verdicts[index].get("drat_sha256")
         if verdicts_form == "dir":
             write_json(root / directory / "verdicts" / f"cube{index:04d}.json", verdicts[index])
         if not with_transcripts:
@@ -254,7 +288,7 @@ def write_source_wave(
     *,
     with_transcripts: bool = True,
     with_proofs: bool = True,
-    with_proof_digests: bool = True,
+    proof_digests: object = DIGESTS_REAL,
     verdicts_form: str = "dir",
     cube_order: list[int] | None = None,
     sort_keys: bool = True,
@@ -273,8 +307,10 @@ def write_source_wave(
     * ``sort_keys=False`` - keys in the writer's own order (here, reversed),
       because nothing off-repo promises to sort them. It applies to the
       ``.jsonl`` writers; the per-cube files are pretty-printed and sorted.
-    * ``with_proof_digests=False`` - a verdict-only wave that kept no proof, so
-      it has no digest to record.
+    * ``proof_digests`` - a verdict-only wave that kept no proof has no digest
+      to record: ``DIGESTS_ABSENT`` leaves the pair out, ``DIGESTS_NULL`` writes
+      it empty, and a collection of cube ids is the mixed wave a campaign
+      interrupted and resumed in the other mode leaves behind.
     """
     if verdicts_form not in VERDICT_FORMS:
         raise ValueError(
@@ -290,7 +326,7 @@ def write_source_wave(
     verdicts = []
     for index in order:
         proof = placeholder_proof(index)
-        verdict = verdict_document(index, with_proof_digests)
+        verdict = verdict_document(index, proof_digests)
         if verdicts_form == "jsonl":
             verdicts.append(verdict if sort_keys else reverse_keys(verdict))
         else:
@@ -311,8 +347,8 @@ def write_source_wave(
                 "tool": SOURCE_TOOL,
                 "tool_rc": 0,
                 "verdict": "s VERIFIED",
-                "drat_sha256": verdict["drat_sha256"],
-                "drat_bytes": verdict["drat_bytes"],
+                "drat_sha256": verdict.get("drat_sha256"),
+                "drat_bytes": verdict.get("drat_bytes"),
                 "cnf_sha256": cube_instance_sha(encoder, symmetry_break, index),
                 "check_wall_s": 0.02,
             }
@@ -342,6 +378,7 @@ def build_wave_repo(
     transcripts: bool = True,
     evidence_level: str | None = None,
     verdicts_form: str = "dir",
+    proof_digests: object = DIGESTS_REAL,
 ) -> Path:
     """Write a miniature repository whose single claim rests on a cube wave.
 
@@ -349,6 +386,9 @@ def build_wave_repo(
     encoder, ``"unsat_runs"`` for a monolithic run-log from a different encoder,
     or ``None`` for no confirmation at all. ``verdicts_form`` selects the shape
     both waves' verdicts are written in; the claim points at whichever it is.
+    ``proof_digests`` applies to the primary wave, whose cubes may have been
+    solved with proofs, without them, or - a campaign resumed in the other mode
+    - some of each.
     """
     root.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(GOOD / "claims" / "ANCHORS.json", _make(root / "claims" / "ANCHORS.json"))
@@ -366,7 +406,7 @@ def build_wave_repo(
             "sha256": hashlib.sha256(witness_path.read_bytes()).hexdigest(),
         }
 
-    write_wave(root, PRIMARY_DIR, "seqcount", True, transcripts, verdicts_form)
+    write_wave(root, PRIMARY_DIR, "seqcount", True, transcripts, verdicts_form, proof_digests)
 
     runs: list[str] = []
     confirm_block: dict | None = None

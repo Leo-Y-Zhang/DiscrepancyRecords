@@ -24,6 +24,15 @@ Three rules it does not bend:
   the transcripts are the record of them, and W4 checks transcripts rather than
   proofs precisely so the proofs can be deleted.
 
+A verdict is ``{cube, lits, rc, wall_s}``; ``drat_sha256`` and ``drat_bytes``
+are optional per cube, because a wave solved without proofs has no digest to
+record and a wave resumed in the other mode carries them for some cubes only.
+What keeps that honest is the tier: ``wave-drat-verified`` needs a checker's
+line for *every* cube, each with a real digest equal to that cube's verdict, so
+a proofless wave imports at ``unsat-wave`` and transcripts covering part of a
+wave are refused rather than quietly dropped. The summary says which tier the
+source buys and why.
+
 The verdicts land as one ``verdicts.jsonl`` - the same objects the per-cube
 files hold, one per line, sorted by cube - because sixteen thousand committed
 files is a repository nobody can clone, browse or review. ``gate/verify_all.py``
@@ -59,6 +68,8 @@ from gate.verify_all import (  # noqa: E402
     MANIFEST_SCHEMA,
     TRANSCRIPT_KEYS,
     VERDICT_KEYS,
+    VERDICT_PROOF_KEYS,
+    VERDICT_REQUIRED_KEYS,
     WAVES_DIR,
     is_hex,
 )
@@ -223,8 +234,21 @@ def load_verdicts(source: Path, n_cubes: int) -> dict[int, dict]:
     verdicts: dict[int, dict] = {}
     problems: list[str] = []
     for where, document in documents:
-        if not isinstance(document, dict) or set(document) != VERDICT_KEYS:
-            problems.append(f"{where} keys are not exactly {sorted(VERDICT_KEYS)}")
+        if not isinstance(document, dict):
+            problems.append(f"{where} is not an object")
+            continue
+        # The two proof keys are optional per cube, and the gate reads them the
+        # same way: a wave solved without proofs has no digest to record, so it
+        # leaves the pair out rather than inventing one. Demanding six keys is
+        # what refused the live confirmation wave, which is honest and complete
+        # and simply kept no proofs.
+        unknown = sorted(set(document) - VERDICT_KEYS)
+        missing = sorted(VERDICT_REQUIRED_KEYS - set(document))
+        if unknown or missing:
+            problems.append(
+                f"{where} keys are wrong: unknown {unknown}, missing {missing} (a verdict is "
+                f"{sorted(VERDICT_REQUIRED_KEYS)}, and may add {sorted(VERDICT_PROOF_KEYS)})"
+            )
             continue
         cube = document["cube"]
         if isinstance(cube, bool) or not isinstance(cube, int) or not 0 <= cube < n_cubes:
@@ -262,7 +286,10 @@ def check_complete(verdicts: dict[int, dict], split: list[int], n_cubes: int) ->
                 f"{cube_literals(split, cube)}"
             )
             continue
-        sha, size = verdict["drat_sha256"], verdict["drat_bytes"]
+        # No proof keys, or the pair recording nothing, both mean the same
+        # thing: this cube kept no proof. That is a complete verdict of what was
+        # run and it is not a defect - it only caps what the wave can be worth.
+        sha, size = verdict.get("drat_sha256"), verdict.get("drat_bytes")
         if sha is None and size is None:
             continue
         if not is_hex(sha, 64):
@@ -335,10 +362,11 @@ def load_transcripts(
         fail("the source transcripts are not readable:\n  " + examples(problems))
 
     normalised: list[dict] = []
+    uncovered: list[int] = []
     for cube in range(n_cubes):
         line = lines.get(cube)
         if line is None:
-            problems.append(f"cube {cube} has no transcript line")
+            uncovered.append(cube)
             continue
         if "ok" in line and line["ok"] is not True:
             problems.append(f"cube {cube} has a transcript whose ok is {line['ok']!r}, not true")
@@ -370,17 +398,17 @@ def load_transcripts(
                 f"{TRANSCRIPTS_NAME} and it stands on its solver verdicts"
             )
             continue
-        if line["drat_sha256"] != verdict["drat_sha256"]:
+        if line["drat_sha256"] != verdict.get("drat_sha256"):
             problems.append(
                 f"cube {cube} transcript is about proof sha256 "
                 f"{str(line['drat_sha256'])[:16]}, the verdict recorded "
-                f"{str(verdict['drat_sha256'])[:16]}"
+                f"{str(verdict.get('drat_sha256'))[:16]}"
             )
             continue
-        if line["drat_bytes"] != verdict["drat_bytes"]:
+        if line["drat_bytes"] != verdict.get("drat_bytes"):
             problems.append(
                 f"cube {cube} transcript and verdict disagree on the proof size: "
-                f"{line['drat_bytes']!r} against {verdict['drat_bytes']!r}"
+                f"{line['drat_bytes']!r} against {verdict.get('drat_bytes')!r}"
             )
             continue
         normalised.append(
@@ -394,6 +422,20 @@ def load_transcripts(
                 "checker": checker,
                 "verdict": VERIFIED,
             }
+        )
+    # Partial coverage is refused, not quietly downgraded. `wave-drat-verified`
+    # means a checker read a proof of *every* cube; a mixed wave run through a
+    # checker leaves lines only for the cubes that kept a proof, and importing
+    # that with the rest dropped would hand back a wave the operator believes is
+    # fully checked and is not. Named first and counted, because the operator's
+    # next question is how far short of the wave the checking got.
+    if uncovered:
+        problems.insert(
+            0,
+            f"{len(uncovered)} of {n_cubes} cube(s) have no transcript line, starting "
+            + ", ".join(f"cube {cube}" for cube in uncovered[:EXAMPLES])
+            + f" - a {TRANSCRIPTS_NAME} covering part of a wave is refused rather than "
+            "dropped; a wave with no transcripts at all imports and stands at unsat-wave",
         )
     if problems:
         fail(
@@ -433,11 +475,36 @@ def write_files(dest: Path, payloads: list[tuple[Path, bytes]]) -> None:
 # --- what to print ----------------------------------------------------------
 
 
+def tier(manifest: dict, transcripts: list[dict] | None) -> str:
+    """Which evidence level this source supports, and why that one.
+
+    Printed so that nobody has to run the gate to find out what they imported.
+    A confirmation wave is solved without proofs and reads exactly like a
+    certified one in a directory listing; the difference is a tier, and the tier
+    is the thing worth saying out loud.
+    """
+    if transcripts is None:
+        return (
+            f"  tier:     {LEVELS[LEVEL_UNSAT_WAVE - 1]} - the source carries no transcripts, so "
+            f"no proof of any cube was checked here; every cube came back rc 20 and that is what "
+            f"this wave is evidence of. A confirming wave from another encoder lifts it to "
+            f"{LEVELS[LEVEL_UNSAT_DUAL - 1]}"
+        )
+    return (
+        f"  tier:     {LEVELS[LEVEL_WAVE_DRAT - 1]} - all {len(transcripts)} cube(s) carry a "
+        f"checker's line saying {VERIFIED!r} over the proof sha256 that cube's verdict records. "
+        f"A confirming wave from another encoder lifts it to "
+        f"{LEVELS[LEVEL_DRAT_TRANSCRIPT - 1]}"
+    )
+
+
 def summarise(manifest: dict, verdicts: dict[int, dict], transcripts: list[dict] | None) -> str:
     n_cubes = int(manifest["n_cubes"])
     walls = [v["wall_s"] for v in verdicts.values() if isinstance(v["wall_s"], (int, float))]
     unrecorded = n_cubes - len(walls)
-    sizes = [v["drat_bytes"] for v in verdicts.values() if isinstance(v["drat_bytes"], int)]
+    sizes = [
+        v["drat_bytes"] for v in verdicts.values() if isinstance(v.get("drat_bytes"), int)
+    ]
     total = sum(walls)
     lines = [
         f"  instance: N={manifest['N']} k={manifest['k']} l={manifest['l']} "
@@ -456,14 +523,19 @@ def summarise(manifest: dict, verdicts: dict[int, dict], transcripts: list[dict]
             f"  proofs:   {sum(sizes)} bytes across {len(sizes)} cube(s), "
             f"largest {max(sizes)} bytes - none of them copied"
         )
+        if len(sizes) != n_cubes:
+            lines.append(
+                f"            {n_cubes - len(sizes)} cube(s) kept no proof and record no digest"
+            )
     else:
-        lines.append("  proofs:   none recorded")
+        lines.append("  proofs:   none recorded - every cube was solved without one")
     if transcripts is None:
         lines.append("  checked:  no transcripts in the source; this wave rests on rc 20 alone")
     else:
         lines.append(
             f"  checked:  {len(transcripts)} transcript line(s), every one {VERIFIED!r}"
         )
+    lines.append(tier(manifest, transcripts))
     return "\n".join(lines)
 
 

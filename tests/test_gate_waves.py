@@ -22,6 +22,7 @@ from tests._wavefix import (
     CONFIRM_DIR,
     CONFIRM_VERDICTS,
     CONFIRM_VERDICTS_JSONL,
+    DIGESTS_ABSENT,
     PRIMARY_DIR,
     TRANSCRIPTS,
     VERDICTS,
@@ -31,6 +32,7 @@ from tests._wavefix import (
     patch_manifest,
     patch_transcript,
     patch_verdict,
+    read_json,
     verdict_lines,
     write_verdict_lines,
 )
@@ -408,6 +410,93 @@ def test_a_wave_that_fails_lends_no_evidence_level(capsys, tmp_path):
     code, out = run(root, capsys)
     assert code != 0, out
     assert any(line.startswith("FAIL W3 ") for line in failures(out)), out
+
+
+# --- a wave solved without proofs -------------------------------------------
+#
+# The two proof keys are optional per cube. A wave solved with the driver's
+# --no-proof mode - which is how a second-encoder confirmation wave is run -
+# records `{cube, lits, rc, wall_s}` and nothing about a proof it never kept,
+# and a wave interrupted and resumed in the other mode holds both shapes at
+# once. Neither is a defect and neither buys anything: a wave with no proof
+# digests is evidence that every cube came back UNSAT, which is `unsat-wave`.
+
+
+def first_verdict(root, form):
+    """One cube's verdict as it sits on disk, whichever form it was written in."""
+    if form == "jsonl":
+        return verdict_lines(root)[0]
+    return read_json(root / PRIMARY_DIR / "verdicts" / "cube0000.json")
+
+
+@pytest.mark.parametrize("verdicts_form", ["dir", "jsonl"])
+def test_a_wave_whose_verdicts_carry_no_proof_keys_verifies_at_unsat_wave(
+    capsys, tmp_path, verdicts_form
+):
+    # Both storage forms, because one reader serves both: a shape accepted from
+    # a directory of files and refused from a consolidated line, or the other
+    # way about, would mean the form a wave is committed in decides whether it
+    # is evidence.
+    root = build_wave_repo(
+        tmp_path / "repo",
+        kind="upper_bound_wave",
+        confirm=None,
+        transcripts=False,
+        proof_digests=DIGESTS_ABSENT,
+        verdicts_form=verdicts_form,
+    )
+    assert sorted(first_verdict(root, verdicts_form)) == ["cube", "lits", "rc", "wall_s"]
+    code, out = run(root, capsys)
+    assert code == 0, out
+    assert "FAIL" not in out
+
+
+@pytest.mark.parametrize("verdicts_form", ["dir", "jsonl"])
+def test_a_mixed_wave_verifies_at_unsat_wave(capsys, tmp_path, verdicts_form):
+    root = build_wave_repo(
+        tmp_path / "repo",
+        kind="upper_bound_wave",
+        confirm=None,
+        transcripts=False,
+        proof_digests={0, 1},
+        verdicts_form=verdicts_form,
+    )
+    code, out = run(root, capsys)
+    assert code == 0, out
+    assert "FAIL" not in out
+
+
+def test_a_wave_with_no_proof_keys_cannot_declare_wave_drat_verified(capsys, tmp_path):
+    # Nothing here was proof-checked, so the tier that says it was is an
+    # overstatement, and G7 is what refuses it.
+    root = build_wave_repo(
+        tmp_path / "repo",
+        kind="upper_bound_wave",
+        confirm=None,
+        transcripts=False,
+        proof_digests=DIGESTS_ABSENT,
+        evidence_level="wave-drat-verified",
+    )
+    code, out = run(root, capsys)
+    assert code != 0, out
+    assert any(line.startswith("FAIL G7 ") for line in failures(out)), out
+
+
+def test_w4_transcript_with_no_digest_over_a_wave_with_no_digest_is_refused(capsys, tmp_path):
+    # A checker wrapper run over a proofless wave copies its emptiness into
+    # every line, and "nothing" equals "nothing" perfectly well. W4 wants a
+    # digest, not agreement, or a wave that hashed no proof reaches the tier
+    # that means every proof was hashed.
+    root = build_wave_repo(
+        tmp_path / "repo",
+        kind="upper_bound_wave",
+        confirm=None,
+        proof_digests=DIGESTS_ABSENT,
+        evidence_level="unsat-wave",
+    )
+    code, out = run(root, capsys)
+    assert code != 0, out
+    assert any(line.startswith("FAIL W4 ") for line in failures(out)), out
 
 
 # --- a wave is one directory ------------------------------------------------

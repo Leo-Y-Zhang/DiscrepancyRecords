@@ -24,6 +24,8 @@ import pytest
 
 from gate.verify_all import main as gate_main
 from tests._wavefix import (
+    DIGESTS_ABSENT,
+    DIGESTS_NULL,
     GOOD,
     N_CUBES,
     N,
@@ -68,6 +70,11 @@ def snapshot(directory):
 def read_lines(path):
     """The lines of a .jsonl unparsed, so that key order survives the reading."""
     return path.read_text(encoding="ascii").splitlines()
+
+
+def tier(out):
+    """The line of the summary that says which evidence level the source buys."""
+    return next(line for line in out.splitlines() if line.strip().startswith("tier:"))
 
 
 def fragments(out):
@@ -255,7 +262,7 @@ def test_a_wave_that_recorded_no_proof_digests_imports_as_unsat_wave(capsys, tmp
         tmp_path / "source",
         with_transcripts=False,
         with_proofs=False,
-        with_proof_digests=False,
+        proof_digests=DIGESTS_NULL,
     )
     assert run_import(root, source) == 0
     out = capsys.readouterr().out
@@ -264,6 +271,81 @@ def test_a_wave_that_recorded_no_proof_digests_imports_as_unsat_wave(capsys, tmp
 
     write_json(root / "claims" / "CLAIMS.json", {"schema": "nk2.claims.v1", "claims": [claim]})
     assert gate_main(["--root", str(root)]) == 0, capsys.readouterr().out
+
+
+# --- a wave solved without proofs -------------------------------------------
+#
+# The driver's --no-proof mode writes `{cube, lits, rc, wall_s}` and stops:
+# there was no proof, so there is no digest to record, and leaving the pair out
+# is the honest shape rather than a defect. That is how a second-encoder
+# confirmation wave is run, and it is what the live k=17 campaign writes, so a
+# tool that demands six keys cannot import the thing it exists to import.
+
+
+def test_a_source_whose_verdicts_omit_the_proof_keys_imports_as_unsat_wave(capsys, tmp_path):
+    root = make_repo(tmp_path)
+    source = write_source_wave(
+        tmp_path / "source",
+        with_transcripts=False,
+        with_proofs=False,
+        proof_digests=DIGESTS_ABSENT,
+    )
+    # The shape under test, asserted on the source rather than assumed: a
+    # fixture that quietly kept the keys would make this test say nothing.
+    first = read_json(source / "verdicts" / "v00000.json")
+    assert sorted(first) == ["cube", "lits", "rc", "wall_s"]
+
+    assert run_import(root, source) == 0
+    out = capsys.readouterr().out
+    claim = fragments(out)["this wave alone (upper_bound_wave)"]
+    assert claim["evidence_level"] == "unsat-wave"
+    assert "unsat-wave" in tier(out)
+
+    write_json(root / "claims" / "CLAIMS.json", {"schema": "nk2.claims.v1", "claims": [claim]})
+    assert gate_main(["--root", str(root)]) == 0, capsys.readouterr().out
+
+
+def test_a_mixed_source_imports_as_unsat_wave(capsys, tmp_path):
+    # A campaign interrupted with proofs on and resumed with them off: some
+    # cubes carry a digest, some carry no proof keys at all. Both are honest
+    # records of what was run, and the wave is neither refused nor promoted.
+    root = make_repo(tmp_path)
+    source = write_source_wave(
+        tmp_path / "source",
+        with_transcripts=False,
+        with_proofs=False,
+        proof_digests={0, 1},
+    )
+    assert "drat_sha256" in read_json(source / "verdicts" / "v00000.json")
+    assert "drat_sha256" not in read_json(source / "verdicts" / "v00002.json")
+
+    assert run_import(root, source) == 0
+    out = capsys.readouterr().out
+    claim = fragments(out)["this wave alone (upper_bound_wave)"]
+    assert claim["evidence_level"] == "unsat-wave"
+    assert "unsat-wave" in tier(out)
+
+    write_json(root / "claims" / "CLAIMS.json", {"schema": "nk2.claims.v1", "claims": [claim]})
+    assert gate_main(["--root", str(root)]) == 0, capsys.readouterr().out
+
+
+def test_the_summary_names_the_tier_the_source_supports_and_why(capsys, tmp_path):
+    # The operator has to be able to tell a confirmation wave from a certified
+    # one by reading the import, not by running the gate afterwards and
+    # wondering why a level moved.
+    root = make_repo(tmp_path)
+    checked = write_source_wave(tmp_path / "checked")
+    assert run_import(root, checked, "--dry-run") == 0
+    line = tier(capsys.readouterr().out)
+    assert "wave-drat-verified" in line and str(N_CUBES) in line
+
+    bare = write_source_wave(
+        tmp_path / "bare", with_transcripts=False, with_proofs=False, proof_digests=DIGESTS_ABSENT
+    )
+    assert run_import(root, bare, "--dry-run") == 0
+    line = tier(capsys.readouterr().out)
+    assert "unsat-wave" in line and "wave-drat-verified" not in line
+    assert "transcript" in line
 
 
 # --- refusals ---------------------------------------------------------------
@@ -278,7 +360,7 @@ def test_transcripts_recording_no_proof_digest_are_refused(capsys, tmp_path):
     # before it could be imported again. W4 wants a digest, so this wants one.
     root = make_repo(tmp_path)
     source = write_source_wave(
-        tmp_path / "source", with_proofs=False, with_proof_digests=False
+        tmp_path / "source", with_proofs=False, proof_digests=DIGESTS_NULL
     )
     assert read_json(source / "verdicts" / "v00000.json")["drat_sha256"] is None
 
@@ -288,12 +370,48 @@ def test_transcripts_recording_no_proof_digest_are_refused(capsys, tmp_path):
     assert not (root / WAVE_DIR).exists()
 
 
+def test_transcripts_over_a_wave_that_kept_no_proof_keys_are_refused(capsys, tmp_path):
+    # The same refusal for the shape the --no-proof driver writes: the keys are
+    # not there to be null. Absent means no proof was kept, so a checker line
+    # claiming to have read one is about a proof this wave never had.
+    root = make_repo(tmp_path)
+    source = write_source_wave(
+        tmp_path / "source", with_proofs=False, proof_digests=DIGESTS_ABSENT
+    )
+    assert "drat_sha256" not in read_json(source / "verdicts" / "v00000.json")
+
+    assert run_import(root, source) == 1
+    err = capsys.readouterr().err
+    assert "cube 0" in err and "sha256" in err
+    assert not (root / WAVE_DIR).exists()
+
+
+def test_transcripts_covering_only_part_of_the_wave_are_refused(capsys, tmp_path):
+    # `wave-drat-verified` means every cube of the wave was checked. A mixed
+    # wave run through a checker leaves lines only for the cubes that kept a
+    # proof, and importing that with the rest quietly dropped would hand the
+    # operator a wave they believe is fully checked and is not. So it is
+    # refused, and the refusal says how many cubes are not accounted for.
+    root = make_repo(tmp_path)
+    source = write_source_wave(tmp_path / "source", proof_digests={0, 1})
+    path = source / "transcripts.jsonl"
+    covered = [line for line in read_jsonl(path) if line["drat_sha256"] is not None]
+    assert [line["cube"] for line in covered] == [0, 1]
+    write_jsonl(path, covered)
+
+    assert run_import(root, source) == 1
+    err = capsys.readouterr().err
+    assert f"2 of {N_CUBES}" in err
+    assert "cube 2" in err and "cube 3" in err
+    assert not (root / WAVE_DIR).exists()
+
+
 def test_a_transcript_digest_the_verdict_never_recorded_is_refused(capsys, tmp_path):
     # The half of it the other way round: the verdict kept no digest and the
     # transcript quotes one, so nothing ties that proof to this cube's solve.
     root = make_repo(tmp_path)
     source = write_source_wave(
-        tmp_path / "source", with_proofs=False, with_proof_digests=False
+        tmp_path / "source", with_proofs=False, proof_digests=DIGESTS_NULL
     )
     path = source / "transcripts.jsonl"
     lines = read_jsonl(path)

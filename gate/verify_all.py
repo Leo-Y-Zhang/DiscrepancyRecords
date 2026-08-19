@@ -129,7 +129,18 @@ MANIFEST_KEYS = {
     "base", "split_vars", "n_cubes", "cubes_sha256", "cube_construction",
 }
 MANIFEST_BASE_KEYS = {"n_vars", "n_clauses", "sha256"}
-VERDICT_KEYS = {"cube", "lits", "rc", "wall_s", "drat_sha256", "drat_bytes"}
+# A verdict always says which cube it is about, on which literals, what the
+# solver returned and how long it took. The two proof keys are optional per
+# cube: a wave solved with the driver's --no-proof mode - which is how a
+# second-encoder confirmation wave is run - kept no proof, so it has no digest
+# to record and leaves the pair out. That is the honest shape, and a wave
+# interrupted and resumed in the other mode carries both. Absent means "no
+# proof hash on record", which can only ever lower what a wave is worth: W4
+# demands a digest, so a cube without one cannot be part of a drat-verified
+# wave.
+VERDICT_REQUIRED_KEYS = {"cube", "lits", "rc", "wall_s"}
+VERDICT_PROOF_KEYS = {"drat_sha256", "drat_bytes"}
+VERDICT_KEYS = VERDICT_REQUIRED_KEYS | VERDICT_PROOF_KEYS
 TRANSCRIPT_KEYS = {
     "cube", "drat_sha256", "drat_bytes", "proof_path_rel", "checker", "verdict",
 }
@@ -808,7 +819,7 @@ def wave_directory(
     """W1: the directory whose contents are this wave, named by its manifest.
 
     A verdict names no instance, no encoder and no N - it is
-    ``{cube, lits, rc, wall_s, drat_sha256, drat_bytes}``, and ``lits`` is a
+    ``{cube, lits, rc, wall_s}`` and an optional proof digest, and ``lits`` is a
     function of the split alone - so two waves that share a split write
     byte-identical verdicts. Nothing inside the artifacts binds a body of
     solving to the instance it decided; the only thing that can is where it
@@ -909,9 +920,21 @@ def collect_verdict(
     One implementation for both storage forms, so that "a duplicate cube is
     refused" cannot be true of a directory of verdicts and false of a
     consolidated file holding the same objects.
+
+    The two proof keys may be missing, and a cube that is missing them is
+    reported as having no proof digest rather than no verdict.
     """
-    if not isinstance(document, dict) or set(document) != VERDICT_KEYS:
-        problems.append(f"{label}: {where} keys are not exactly {sorted(VERDICT_KEYS)}")
+    if not isinstance(document, dict):
+        problems.append(f"{label}: {where} is not an object")
+        return
+    unknown = sorted(set(document) - VERDICT_KEYS)
+    missing = sorted(VERDICT_REQUIRED_KEYS - set(document))
+    if unknown or missing:
+        problems.append(
+            f"{label}: {where} keys are wrong: unknown {unknown}, missing {missing} "
+            f"(a verdict is {sorted(VERDICT_REQUIRED_KEYS)}, and may add "
+            f"{sorted(VERDICT_PROOF_KEYS)})"
+        )
         return
     cube = document["cube"]
     if isinstance(cube, bool) or not isinstance(cube, int) or not 0 <= cube < n_cubes:
@@ -927,7 +950,7 @@ def collect_verdict(
         problems.append(f"{label}: verdict for cube {cube} has no list of literals")
         return
     verdicts[cube] = Verdict(
-        list(lits), document["rc"], document["drat_sha256"], document["drat_bytes"]
+        list(lits), document["rc"], document.get("drat_sha256"), document.get("drat_bytes")
     )
 
 
