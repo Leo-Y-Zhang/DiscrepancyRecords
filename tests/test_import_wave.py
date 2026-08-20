@@ -377,6 +377,44 @@ def test_the_checkers_pruned_transcript_is_read_and_the_bookkeeping_dropped(caps
     assert gate_main(["--root", str(root)]) == 0, capsys.readouterr().out
 
 
+def test_the_checkers_sampled_transcript_is_read_and_the_bookkeeping_dropped(capsys, tmp_path):
+    # Checking every proof of a 16,384-cube wave costs ~4,700 core-hours, so the
+    # live checker verifies a declared random sample and records WHICH lines it
+    # checked because they were sampled, as opposed to the every-512th archive
+    # rule. That flag is real provenance and worth keeping in the checker's own
+    # file - but the tool had never been shown it, so a dry run against the live
+    # campaign refused every transcript by name. Found on 2026-08-20 while the
+    # wave was still running; at harvest it would have blocked the import.
+    root = make_repo(tmp_path)
+    source = write_source_wave(tmp_path / "source", transcript_extras={"sampled": True})
+    assert "sampled" in read_jsonl(source / "transcripts.jsonl")[0]
+
+    assert run_import(root, source) == 0
+    out = capsys.readouterr().out
+    assert "wave-drat-verified" in tier(out)
+    # Like proof_pruned: read, then left behind. Which cubes were sampled is the
+    # sample declaration's business, not the committed transcript's.
+    written = read_jsonl(root / WAVE_DIR / "transcripts.jsonl")
+    assert all("sampled" not in line for line in written)
+
+    claim = fragments(out)["this wave alone (upper_bound_wave)"]
+    write_json(root / "claims" / "CLAIMS.json", {"schema": "nk2.claims.v1", "claims": [claim]})
+    assert gate_main(["--root", str(root)]) == 0, capsys.readouterr().out
+
+
+def test_both_pieces_of_checker_bookkeeping_may_appear_on_one_line(capsys, tmp_path):
+    # The live checker writes both: it prunes the proof it just read AND records
+    # that the line was sampled. Accepting each alone is not evidence the pair
+    # is accepted.
+    root = make_repo(tmp_path)
+    source = write_source_wave(
+        tmp_path / "source", transcript_extras={"proof_pruned": True, "sampled": True}
+    )
+    assert run_import(root, source) == 0
+    written = read_jsonl(root / WAVE_DIR / "transcripts.jsonl")
+    assert all("sampled" not in line and "proof_pruned" not in line for line in written)
+
+
 def test_a_transcript_key_the_tool_does_not_know_is_refused_and_named(capsys, tmp_path):
     # Only the keys this tool has been shown are accepted - a checker whose
     # schema it does not know is one it would be guessing about - but the

@@ -102,8 +102,15 @@ SOURCE_TRANSCRIPT_KEYS = {
 # read and the key is left behind rather than the file being refused. The set is
 # enumerated and not a free-for-all: a key nobody here has heard of is a checker
 # whose schema this tool would be guessing at, and it is refused *by name*.
+# `sampled` says the checker read that proof because the cube was in the wave's
+# DECLARED random sample, rather than under the every-512th archive rule.
+# Verifying all 16,384 proofs of the N=274 wave costs ~4,700 core-hours, so only
+# a sample is checked and the flag is how the two reasons stay distinguishable
+# in the checker's own file. Like `proof_pruned` it is provenance the gate never
+# reads: which cubes were sampled is the sample declaration's business.
 PRUNED_KEY = "proof_pruned"
-SOURCE_TRANSCRIPT_EXTRA_KEYS = {PRUNED_KEY}
+SAMPLED_KEY = "sampled"
+SOURCE_TRANSCRIPT_EXTRA_KEYS = {PRUNED_KEY, SAMPLED_KEY}
 VERIFIED = "s VERIFIED"
 
 # Where a cube's proof belongs once its wave is in the repository. Nothing is
