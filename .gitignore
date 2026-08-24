@@ -29,7 +29,27 @@ evidence/waves/**/proofs/
 #
 # The SOURCE is tracked from here on. Only the multi-gigabyte artefacts and
 # the machine-local run state are ignored.
-scratch/wave*/
+# A wave directory is gigabytes of verdicts and proofs, so its CONTENTS are
+# ignored - but not the small files that are pure evidence.
+#
+# manifest.json is 560 bytes and carries the encoder, the split vars, the cube
+# construction and the sha256 of base.cnf and cubes.txt. sample.json is 10 KB
+# and carries the seed and method the 1,600-cube proof sample was drawn with.
+# Those hashes are the entire reason a regenerated base.cnf can be trusted to
+# be the same input the verdicts were computed against, and the seed is the
+# only thing that makes the sample reproducible.
+#
+# On 2026-08-24 they existed in exactly one place on one disk. They were inside
+# the directory the deletion above took, and survived only because someone had
+# pasted them into a note. Evidence that small does not belong behind an ignore
+# rule written for gigabytes.
+#
+# Note the trailing `*`: git cannot re-include a file whose PARENT DIRECTORY is
+# excluded, so this ignores the directory's CONTENTS rather than the directory
+# itself, which is what lets the negations below apply at all.
+scratch/wave*/*
+!scratch/wave*/manifest.json
+!scratch/wave*/sample.json
 scratch/nk2snap/
 scratch/*.log
 scratch/*.pid
