@@ -36,17 +36,33 @@ The first version of this block carried three of them and turned the whole gate
 red - `verify_all.py` stops at the first failure and reports "this repository
 asserts nothing", so one handoff note took every claim down with it.
 
-### Also open, and deliberately so
+### Closed on 2026-08-24: both deferred pipeline defects
 
-`check_pass.classify` does not exist. The eleven tests for it in
-`scratch/test_missing_proof_classification.py` are marked `xfail(strict=True)`,
-so they run, CI stays honest, and the day someone implements it they turn into
-XPASS - which pytest reports as a failure - forcing the marker to be deleted.
-Implementing it means editing `check_pass.py`, which has live processes whose
-pool workers re-import the module on spawn, so it waits for a phase boundary.
-Same reason `scratch/cube_wave2.py` has one lint rule parked in
-`per-file-ignores`; remove that block when the wave ends and re-run
-`ruff check .`.
+`check_pass.classify` is implemented. It routes every result to one of
+transcript / skip-already-verified / checker-error / check-failure, re-reading
+`transcripts.jsonl` on each call rather than caching, so a proof the pruner
+reclaims after the pass started is a skip and not the false "a proof did not
+verify" that halted the campaign on 23 Aug. The guard is narrow: an
+`s NOT VERIFIED` or a sha mismatch still halts, even for a cube already in
+transcripts. The `xfail(strict=True)` marker did its job first - every test
+turned XPASS the moment `classify` existed, which pytest reports as a failure,
+forcing the marker's own deletion.
+
+`sample_prune`'s stand-down now banks its in-flight checks instead of discarding
+them. `cancel_futures=True` cannot cancel a call already executing, and
+`check_one` deletes the proof on success, so breaking out of the loop left a
+deleted proof with no transcript line and no prune record. Draining is free:
+`with ProcessPoolExecutor(...)` already waits for those calls on exit and simply
+threw away what they returned.
+
+Both were deferred because pool workers on Windows re-import their module on
+spawn. That hazard is real but was not present: a process census found no live
+`check_pass`, and under `--no-proof` the verdicts carry no `drat_sha256`, so
+`sample_prune`'s check-batch path is never reached at all.
+
+Still parked, and genuinely blocked: `scratch/cube_wave2.py` has one lint rule
+in `per-file-ignores` because that file IS running, with sixteen pool workers.
+Remove the block when the wave ends and re-run `ruff check .`.
 
 ## Where this stands
 
