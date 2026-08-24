@@ -1,5 +1,5 @@
 [tool.pytest.ini_options]
-# `tests` is the library's suite. The three files under `scratch` are named
+# `tests` is the library's suite. The files under `scratch` are named
 # individually rather than by adding the whole directory, and the distinction is
 # load-bearing: most of scratch's `test_*.py` are STANDALONE SCRIPTS with a
 # `--mutate` mode, meant to be run by hand, not pytest modules. Collecting the
@@ -12,13 +12,16 @@
 # the machine that is running the campaign is not a risk worth taking for
 # coverage.
 #
-# These three are safe: every one is hermetic, using `tmp_path` fixtures and
-# monkeypatching the module's paths away from the live wave.
+# These four are safe: every one is hermetic, using `tmp_path` fixtures,
+# monkeypatching the module's paths away from the live wave, or - in the
+# stand-down tests - constructing concurrent.futures.Future objects directly so
+# that no pool, no subprocess and no drat-trim is involved at all.
 testpaths = [
     "tests",
     "scratch/test_watchdog_stall.py",
     "scratch/test_verdict_durability.py",
     "scratch/test_missing_proof_classification.py",
+    "scratch/test_stand_down_drain.py",
 ]
 pythonpath = ["."]
 markers = [

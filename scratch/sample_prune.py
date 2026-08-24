@@ -31,7 +31,7 @@ import os
 import random
 import sys
 import time
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import CancelledError, ProcessPoolExecutor, as_completed
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -71,6 +71,84 @@ def declare_sample(w, total, size):
     with open(path, "w", encoding="ascii", newline="\n") as fh:
         json.dump(doc, fh)
     return set(cubes)
+
+
+def bank_row(row, trans, fails, checked):
+    """Record one completed check where it belongs. Returns 1 if it was a check
+    failure, 0 otherwise.
+
+    Split out of the batch loop so the stand-down path can bank a row EXACTLY
+    the way the main loop does. Previously the banking was inline, so the only
+    way to stand down was to `break` past it - which is how a computed result
+    got thrown away.
+    """
+    row["sampled"] = True
+    checked.add(row["cube"])
+    if row["ok"]:
+        with open(trans, "a", encoding="ascii", newline="\n") as fh:
+            fh.write(json.dumps(row) + "\n")
+        return 0
+    with open(fails, "a", encoding="ascii", newline="\n") as fh:
+        fh.write(json.dumps(row) + "\n")
+    print(f"!! CHECK FAILURE cube {row['cube']}: "
+          f"{row.get('error') or row.get('verdict')}", flush=True)
+    return 1
+
+
+def drain(futmap, consumed):
+    """Yield (job, row, error) for every future not already consumed and not
+    cancelled, WAITING for any that are still running.
+
+    This exists because `cancel_futures=True` is not the guarantee it reads
+    like. It cannot cancel work already handed to the pool's call queue
+    (max_workers + 1 items) or the call already executing: those run to
+    completion. And `check_and_prune.check_one` DELETES the proof on success
+    for any cube off the archive stride. So abandoning their rows leaves the
+    proof gone, no transcript line, and no prune record - precisely the cube-448
+    signature that could not be explained on 2026-08-23.
+
+    A result that is computed and thrown away is worse than one never computed:
+    it destroys the evidence silently, and it looks identical to a cube that was
+    never checked.
+
+    Draining is also FREE, which is the part that makes the old code purely a
+    loss. `with ProcessPoolExecutor(...)` calls shutdown(wait=True) on exit, so
+    the process was ALREADY blocking until the in-flight checks finished. It
+    just discarded what they returned.
+    """
+    for fut, job in futmap.items():
+        if fut in consumed or fut.cancelled():
+            continue
+        try:
+            yield job, fut.result(), None
+        except CancelledError:
+            # Not an error, and NOT catchable by `except Exception` - since 3.8
+            # CancelledError derives from BaseException. A cube that never ran
+            # is simply left for the next pass.
+            continue
+        except Exception as exc:  # noqa: BLE001 - infrastructure, not a proof
+            yield job, None, exc
+
+
+def stand_down(ex, futmap, consumed, w, trans, fails, checked):
+    """Honour STOP_CHECKER: cancel what has not started, then bank everything
+    already in flight. Returns the number of check failures banked."""
+    ex.shutdown(wait=False, cancel_futures=True)
+    nfail = 0
+    for job, row, exc in drain(futmap, consumed):
+        if exc is not None:
+            # Same rule as everywhere else in this pipeline: an infrastructure
+            # fault is CHECKER_ERRORS, never CHECK_FAILURES, which halts the
+            # campaign and means "a proof did not verify".
+            with open(os.path.join(w, "CHECKER_ERRORS.jsonl"), "a",
+                      encoding="ascii", newline="\n") as fh:
+                fh.write(json.dumps({"cube": job[1],
+                                     "error": repr(exc)}) + "\n")
+            print(f"!! CHECKER ERROR cube {job[1]} during stand-down "
+                  f"(infrastructure, not a proof failure): {exc!r}", flush=True)
+            continue
+        nfail += bank_row(row, trans, fails, checked)
+    return nfail
 
 
 def main():
@@ -173,7 +251,12 @@ def main():
                 continue
             with ProcessPoolExecutor(max_workers=workers) as ex:
                 futmap = {ex.submit(check_one, j): j for j in todo[:60]}
+                consumed = set()
                 for fut in as_completed(futmap):
+                    # Recorded BEFORE the result is unpacked, so a row that
+                    # raised still counts as consumed and the stand-down drain
+                    # does not wait on it a second time.
+                    consumed.add(fut)
                     try:
                         row = fut.result()
                     except Exception as e:  # noqa: BLE001
@@ -192,20 +275,7 @@ def main():
                               f"(infrastructure, not a proof failure): {e!r}",
                               flush=True)
                         continue
-                    row["sampled"] = True
-                    checked.add(row["cube"])
-                    if row["ok"]:
-                        with open(trans, "a", encoding="ascii",
-                                  newline="\n") as fh:
-                            fh.write(json.dumps(row) + "\n")
-                    else:
-                        nfail += 1
-                        with open(fails, "a", encoding="ascii",
-                                  newline="\n") as fh:
-                            fh.write(json.dumps(row) + "\n")
-                        print(f"!! CHECK FAILURE cube {row['cube']}: "
-                              f"{row.get('error') or row.get('verdict')}",
-                              flush=True)
+                    nfail += bank_row(row, trans, fails, checked)
                     if os.path.exists(stop):
                         # The while-loop's stop check is at the TOP of an
                         # iteration, and one iteration is up to 60 proofs at a
@@ -215,7 +285,8 @@ def main():
                         # handover never happens.
                         print("sample-pruner: STOP_CHECKER seen, standing down "
                               "mid-batch", flush=True)
-                        ex.shutdown(wait=False, cancel_futures=True)
+                        nfail += stand_down(ex, futmap, consumed, w, trans,
+                                            fails, checked)
                         break
             if nfail:
                 print(f"sample-pruner: HALTING, {nfail} failure(s)", flush=True)
