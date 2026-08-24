@@ -1,0 +1,461 @@
+[2026-08-19 18:03:28] === campaign orchestrator starting ===
+[2026-08-19 18:03:28] start totalizer-wave: C:\Users\lambe\AppData\Local\Programs\Python\Python313\python.exe C:\dev\DiscrepancyRecords\scratch\cube_wave2.py wave wave274tot 16 2400
+50/16384 in 0.00h | UNSAT 50 SAT 0 UNK 0 | 200370/h | ~0.1h left
+100/16384 in 0.00h | UNSAT 100 SAT 0 UNK 0 | 397755/h | ~0.0h left
+150/16384 in 0.00h | UNSAT 150 SAT 0 UNK 0 | 591423/h | ~0.0h left
+200/16384 in 0.00h | UNSAT 200 SAT 0 UNK 0 | 783072/h | ~0.0h left
+250/16384 in 0.00h | UNSAT 250 SAT 0 UNK 0 | 970406/h | ~0.0h left
+300/16384 in 0.00h | UNSAT 300 SAT 0 UNK 0 | 1156102/h | ~0.0h left
+350/16384 in 0.00h | UNSAT 350 SAT 0 UNK 0 | 1338614/h | ~0.0h left
+400/16384 in 0.00h | UNSAT 400 SAT 0 UNK 0 | 1519178/h | ~0.0h left
+450/16384 in 0.00h | UNSAT 450 SAT 0 UNK 0 | 1693620/h | ~0.0h left
+500/16384 in 0.05h | UNSAT 500 SAT 0 UNK 0 | 9797/h | ~1.6h left
+550/16384 in 0.17h | UNSAT 550 SAT 0 UNK 0 | 3321/h | ~4.8h left
+600/16384 in 0.31h | UNSAT 600 SAT 0 UNK 0 | 1934/h | ~8.2h left
+650/16384 in 0.49h | UNSAT 650 SAT 0 UNK 0 | 1333/h | ~11.8h left
+700/16384 in 0.68h | UNSAT 700 SAT 0 UNK 0 | 1030/h | ~15.2h left
+750/16384 in 0.88h | UNSAT 750 SAT 0 UNK 0 | 852/h | ~18.3h left
+800/16384 in 1.10h | UNSAT 800 SAT 0 UNK 0 | 724/h | ~21.5h left
+850/16384 in 1.32h | UNSAT 850 SAT 0 UNK 0 | 643/h | ~24.2h left
+900/16384 in 1.48h | UNSAT 900 SAT 0 UNK 0 | 606/h | ~25.5h left
+950/16384 in 1.65h | UNSAT 950 SAT 0 UNK 0 | 576/h | ~26.8h left
+1000/16384 in 1.88h | UNSAT 1000 SAT 0 UNK 0 | 532/h | ~28.9h left
+1050/16384 in 2.12h | UNSAT 1050 SAT 0 UNK 0 | 496/h | ~30.9h left
+1100/16384 in 2.40h | UNSAT 1100 SAT 0 UNK 0 | 459/h | ~33.3h left
+1150/16384 in 2.58h | UNSAT 1150 SAT 0 UNK 0 | 446/h | ~34.1h left
+1200/16384 in 2.76h | UNSAT 1200 SAT 0 UNK 0 | 435/h | ~34.9h left
+1250/16384 in 3.08h | UNSAT 1250 SAT 0 UNK 0 | 406/h | ~37.3h left
+1300/16384 in 3.34h | UNSAT 1300 SAT 0 UNK 0 | 390/h | ~38.7h left
+1350/16384 in 3.56h | UNSAT 1350 SAT 0 UNK 0 | 379/h | ~39.7h left
+1400/16384 in 3.92h | UNSAT 1400 SAT 0 UNK 0 | 357/h | ~42.0h left
+1450/16384 in 4.24h | UNSAT 1450 SAT 0 UNK 0 | 342/h | ~43.7h left
+1500/16384 in 4.47h | UNSAT 1500 SAT 0 UNK 0 | 335/h | ~44.4h left
+1550/16384 in 4.70h | UNSAT 1549 SAT 0 UNK 1 | 330/h | ~45.0h left
+^C[2026-08-19 22:57:07] === campaign orchestrator starting ===
+[2026-08-19 22:57:07] start totalizer-wave: C:\Users\lambe\AppData\Local\Programs\Python\Python313\python.exe C:\dev\DiscrepancyRecords\scratch\cube_wave2.py wave wave274tot 16 2400
+50/16384 in 0.00h | UNSAT 50 SAT 0 UNK 0 | 365767/h | ~0.0h left
+100/16384 in 0.00h | UNSAT 100 SAT 0 UNK 0 | 695161/h | ~0.0h left
+150/16384 in 0.00h | UNSAT 150 SAT 0 UNK 0 | 1030673/h | ~0.0h left
+200/16384 in 0.00h | UNSAT 200 SAT 0 UNK 0 | 1358188/h | ~0.0h left
+250/16384 in 0.00h | UNSAT 250 SAT 0 UNK 0 | 1680187/h | ~0.0h left
+300/16384 in 0.00h | UNSAT 300 SAT 0 UNK 0 | 1992226/h | ~0.0h left
+350/16384 in 0.00h | UNSAT 350 SAT 0 UNK 0 | 2299764/h | ~0.0h left
+400/16384 in 0.00h | UNSAT 400 SAT 0 UNK 0 | 2601000/h | ~0.0h left
+450/16384 in 0.00h | UNSAT 450 SAT 0 UNK 0 | 2896250/h | ~0.0h left
+500/16384 in 0.00h | UNSAT 500 SAT 0 UNK 0 | 3186277/h | ~0.0h left
+550/16384 in 0.00h | UNSAT 550 SAT 0 UNK 0 | 3467396/h | ~0.0h left
+600/16384 in 0.00h | UNSAT 600 SAT 0 UNK 0 | 3745081/h | ~0.0h left
+650/16384 in 0.00h | UNSAT 650 SAT 0 UNK 0 | 4017728/h | ~0.0h left
+700/16384 in 0.00h | UNSAT 700 SAT 0 UNK 0 | 4284670/h | ~0.0h left
+750/16384 in 0.00h | UNSAT 750 SAT 0 UNK 0 | 4546114/h | ~0.0h left
+800/16384 in 0.00h | UNSAT 800 SAT 0 UNK 0 | 4803431/h | ~0.0h left
+850/16384 in 0.00h | UNSAT 850 SAT 0 UNK 0 | 5049893/h | ~0.0h left
+900/16384 in 0.00h | UNSAT 900 SAT 0 UNK 0 | 5294351/h | ~0.0h left
+950/16384 in 0.00h | UNSAT 950 SAT 0 UNK 0 | 5538147/h | ~0.0h left
+1000/16384 in 0.00h | UNSAT 1000 SAT 0 UNK 0 | 5775177/h | ~0.0h left
+1050/16384 in 0.00h | UNSAT 1050 SAT 0 UNK 0 | 6007130/h | ~0.0h left
+1100/16384 in 0.00h | UNSAT 1100 SAT 0 UNK 0 | 6228102/h | ~0.0h left
+1150/16384 in 0.00h | UNSAT 1150 SAT 0 UNK 0 | 6455443/h | ~0.0h left
+1200/16384 in 0.00h | UNSAT 1200 SAT 0 UNK 0 | 6678082/h | ~0.0h left
+1250/16384 in 0.00h | UNSAT 1250 SAT 0 UNK 0 | 6881188/h | ~0.0h left
+1300/16384 in 0.00h | UNSAT 1300 SAT 0 UNK 0 | 7092535/h | ~0.0h left
+1350/16384 in 0.00h | UNSAT 1350 SAT 0 UNK 0 | 7301078/h | ~0.0h left
+1400/16384 in 0.00h | UNSAT 1400 SAT 0 UNK 0 | 7507064/h | ~0.0h left
+1450/16384 in 0.00h | UNSAT 1450 SAT 0 UNK 0 | 7710386/h | ~0.0h left
+1500/16384 in 0.00h | UNSAT 1500 SAT 0 UNK 0 | 7895108/h | ~0.0h left
+1550/16384 in 0.03h | UNSAT 1550 SAT 0 UNK 0 | 60152/h | ~0.2h left
+1600/16384 in 0.26h | UNSAT 1600 SAT 0 UNK 0 | 6054/h | ~2.4h left
+1650/16384 in 0.43h | UNSAT 1650 SAT 0 UNK 0 | 3863/h | ~3.8h left
+1700/16384 in 0.62h | UNSAT 1700 SAT 0 UNK 0 | 2749/h | ~5.3h left
+1750/16384 in 0.83h | UNSAT 1750 SAT 0 UNK 0 | 2097/h | ~7.0h left
+1800/16384 in 1.03h | UNSAT 1800 SAT 0 UNK 0 | 1743/h | ~8.4h left
+1850/16384 in 1.45h | UNSAT 1850 SAT 0 UNK 0 | 1275/h | ~11.4h left
+1900/16384 in 1.82h | UNSAT 1900 SAT 0 UNK 0 | 1045/h | ~13.9h left
+1950/16384 in 2.19h | UNSAT 1950 SAT 0 UNK 0 | 889/h | ~16.2h left
+2000/16384 in 2.61h | UNSAT 2000 SAT 0 UNK 0 | 767/h | ~18.8h left
+2050/16384 in 2.95h | UNSAT 2050 SAT 0 UNK 0 | 694/h | ~20.7h left
+2100/16384 in 3.33h | UNSAT 2100 SAT 0 UNK 0 | 631/h | ~22.6h left
+2150/16384 in 3.74h | UNSAT 2150 SAT 0 UNK 0 | 576/h | ~24.7h left
+2200/16384 in 4.06h | UNSAT 2200 SAT 0 UNK 0 | 542/h | ~26.2h left
+^C[2026-08-20 03:11:04] === campaign orchestrator starting ===
+[2026-08-20 03:11:04] start totalizer-wave: C:\Users\lambe\AppData\Local\Programs\Python\Python313\python.exe C:\dev\DiscrepancyRecords\scratch\cube_wave2.py wave wave274tot 16 2400
+50/16384 in 0.00h | UNSAT 50 SAT 0 UNK 0 | 385007/h | ~0.0h left
+100/16384 in 0.00h | UNSAT 100 SAT 0 UNK 0 | 506173/h | ~0.0h left
+150/16384 in 0.00h | UNSAT 150 SAT 0 UNK 0 | 749491/h | ~0.0h left
+200/16384 in 0.00h | UNSAT 200 SAT 0 UNK 0 | 988360/h | ~0.0h left
+250/16384 in 0.00h | UNSAT 250 SAT 0 UNK 0 | 1222417/h | ~0.0h left
+300/16384 in 0.00h | UNSAT 300 SAT 0 UNK 0 | 1451636/h | ~0.0h left
+350/16384 in 0.00h | UNSAT 350 SAT 0 UNK 0 | 1678394/h | ~0.0h left
+400/16384 in 0.00h | UNSAT 400 SAT 0 UNK 0 | 1902023/h | ~0.0h left
+450/16384 in 0.00h | UNSAT 450 SAT 0 UNK 0 | 2122688/h | ~0.0h left
+500/16384 in 0.00h | UNSAT 500 SAT 0 UNK 0 | 2337993/h | ~0.0h left
+550/16384 in 0.00h | UNSAT 550 SAT 0 UNK 0 | 2546811/h | ~0.0h left
+600/16384 in 0.00h | UNSAT 600 SAT 0 UNK 0 | 2751554/h | ~0.0h left
+650/16384 in 0.00h | UNSAT 650 SAT 0 UNK 0 | 2956980/h | ~0.0h left
+700/16384 in 0.00h | UNSAT 700 SAT 0 UNK 0 | 3156818/h | ~0.0h left
+750/16384 in 0.00h | UNSAT 750 SAT 0 UNK 0 | 3352776/h | ~0.0h left
+800/16384 in 0.00h | UNSAT 800 SAT 0 UNK 0 | 3542791/h | ~0.0h left
+850/16384 in 0.00h | UNSAT 850 SAT 0 UNK 0 | 3733391/h | ~0.0h left
+900/16384 in 0.00h | UNSAT 900 SAT 0 UNK 0 | 3915802/h | ~0.0h left
+950/16384 in 0.00h | UNSAT 950 SAT 0 UNK 0 | 4098685/h | ~0.0h left
+1000/16384 in 0.00h | UNSAT 1000 SAT 0 UNK 0 | 4276398/h | ~0.0h left
+1050/16384 in 0.00h | UNSAT 1050 SAT 0 UNK 0 | 4448902/h | ~0.0h left
+1100/16384 in 0.00h | UNSAT 1100 SAT 0 UNK 0 | 4621852/h | ~0.0h left
+1150/16384 in 0.00h | UNSAT 1150 SAT 0 UNK 0 | 4785688/h | ~0.0h left
+1200/16384 in 0.00h | UNSAT 1200 SAT 0 UNK 0 | 4954843/h | ~0.0h left
+1250/16384 in 0.00h | UNSAT 1250 SAT 0 UNK 0 | 5117374/h | ~0.0h left
+1300/16384 in 0.00h | UNSAT 1300 SAT 0 UNK 0 | 5280927/h | ~0.0h left
+1350/16384 in 0.00h | UNSAT 1350 SAT 0 UNK 0 | 5441667/h | ~0.0h left
+1400/16384 in 0.00h | UNSAT 1400 SAT 0 UNK 0 | 5603522/h | ~0.0h left
+1450/16384 in 0.00h | UNSAT 1450 SAT 0 UNK 0 | 5760168/h | ~0.0h left
+1500/16384 in 0.00h | UNSAT 1500 SAT 0 UNK 0 | 5913259/h | ~0.0h left
+1550/16384 in 0.00h | UNSAT 1550 SAT 0 UNK 0 | 6063135/h | ~0.0h left
+1600/16384 in 0.00h | UNSAT 1600 SAT 0 UNK 0 | 6211561/h | ~0.0h left
+1650/16384 in 0.00h | UNSAT 1650 SAT 0 UNK 0 | 6355355/h | ~0.0h left
+1700/16384 in 0.00h | UNSAT 1700 SAT 0 UNK 0 | 6500152/h | ~0.0h left
+1750/16384 in 0.00h | UNSAT 1750 SAT 0 UNK 0 | 6642595/h | ~0.0h left
+1800/16384 in 0.00h | UNSAT 1800 SAT 0 UNK 0 | 6783070/h | ~0.0h left
+1850/16384 in 0.00h | UNSAT 1850 SAT 0 UNK 0 | 6921282/h | ~0.0h left
+1900/16384 in 0.00h | UNSAT 1900 SAT 0 UNK 0 | 7061125/h | ~0.0h left
+1950/16384 in 0.00h | UNSAT 1950 SAT 0 UNK 0 | 7198135/h | ~0.0h left
+2000/16384 in 0.00h | UNSAT 2000 SAT 0 UNK 0 | 7335227/h | ~0.0h left
+2050/16384 in 0.00h | UNSAT 2050 SAT 0 UNK 0 | 7467708/h | ~0.0h left
+2100/16384 in 0.00h | UNSAT 2100 SAT 0 UNK 0 | 7595430/h | ~0.0h left
+2150/16384 in 0.00h | UNSAT 2150 SAT 0 UNK 0 | 7726492/h | ~0.0h left
+2200/16384 in 0.00h | UNSAT 2200 SAT 0 UNK 0 | 7838441/h | ~0.0h left
+2250/16384 in 0.17h | UNSAT 2250 SAT 0 UNK 0 | 12863/h | ~1.1h left
+2300/16384 in 0.36h | UNSAT 2300 SAT 0 UNK 0 | 6383/h | ~2.2h left
+2350/16384 in 0.58h | UNSAT 2350 SAT 0 UNK 0 | 4042/h | ~3.5h left
+2400/16384 in 0.85h | UNSAT 2400 SAT 0 UNK 0 | 2818/h | ~5.0h left
+2450/16384 in 1.05h | UNSAT 2450 SAT 0 UNK 0 | 2342/h | ~5.9h left
+2500/16384 in 1.20h | UNSAT 2500 SAT 0 UNK 0 | 2076/h | ~6.7h left
+2550/16384 in 1.49h | UNSAT 2550 SAT 0 UNK 0 | 1717/h | ~8.1h left
+2600/16384 in 1.70h | UNSAT 2600 SAT 0 UNK 0 | 1531/h | ~9.0h left
+2650/16384 in 1.91h | UNSAT 2650 SAT 0 UNK 0 | 1389/h | ~9.9h left
+2700/16384 in 2.19h | UNSAT 2700 SAT 0 UNK 0 | 1233/h | ~11.1h left
+2750/16384 in 2.42h | UNSAT 2750 SAT 0 UNK 0 | 1137/h | ~12.0h left
+2800/16384 in 2.63h | UNSAT 2800 SAT 0 UNK 0 | 1064/h | ~12.8h left
+2850/16384 in 2.78h | UNSAT 2850 SAT 0 UNK 0 | 1025/h | ~13.2h left
+2900/16384 in 2.96h | UNSAT 2900 SAT 0 UNK 0 | 979/h | ~13.8h left
+2950/16384 in 3.19h | UNSAT 2950 SAT 0 UNK 0 | 924/h | ~14.5h left
+3000/16384 in 3.31h | UNSAT 3000 SAT 0 UNK 0 | 906/h | ~14.8h left
+3050/16384 in 3.53h | UNSAT 3050 SAT 0 UNK 0 | 864/h | ~15.4h left
+3100/16384 in 3.74h | UNSAT 3100 SAT 0 UNK 0 | 828/h | ~16.0h left
+3150/16384 in 4.09h | UNSAT 3150 SAT 0 UNK 0 | 770/h | ~17.2h left
+3200/16384 in 4.43h | UNSAT 3200 SAT 0 UNK 0 | 722/h | ~18.3h left
+3250/16384 in 4.80h | UNSAT 3250 SAT 0 UNK 0 | 677/h | ~19.4h left
+3300/16384 in 5.04h | UNSAT 3300 SAT 0 UNK 0 | 655/h | ~20.0h left
+3350/16384 in 5.48h | UNSAT 3350 SAT 0 UNK 0 | 611/h | ~21.3h left
+3400/16384 in 5.94h | UNSAT 3400 SAT 0 UNK 0 | 573/h | ~22.7h left
+3450/16384 in 6.26h | UNSAT 3450 SAT 0 UNK 0 | 551/h | ~23.5h left
+3500/16384 in 6.56h | UNSAT 3500 SAT 0 UNK 0 | 533/h | ~24.2h left
+3550/16384 in 6.76h | UNSAT 3550 SAT 0 UNK 0 | 525/h | ~24.4h left
+3600/16384 in 6.91h | UNSAT 3600 SAT 0 UNK 0 | 521/h | ~24.6h left
+3650/16384 in 7.14h | UNSAT 3650 SAT 0 UNK 0 | 511/h | ~24.9h left
+3700/16384 in 7.32h | UNSAT 3700 SAT 0 UNK 0 | 506/h | ~25.1h left
+3750/16384 in 7.49h | UNSAT 3750 SAT 0 UNK 0 | 501/h | ~25.2h left
+3800/16384 in 7.66h | UNSAT 3800 SAT 0 UNK 0 | 496/h | ~25.4h left
+3850/16384 in 7.86h | UNSAT 3850 SAT 0 UNK 0 | 490/h | ~25.6h left
+3900/16384 in 8.04h | UNSAT 3900 SAT 0 UNK 0 | 485/h | ~25.7h left
+3950/16384 in 8.24h | UNSAT 3950 SAT 0 UNK 0 | 480/h | ~25.9h left
+4000/16384 in 8.40h | UNSAT 4000 SAT 0 UNK 0 | 476/h | ~26.0h left
+4050/16384 in 8.75h | UNSAT 4050 SAT 0 UNK 0 | 463/h | ~26.7h left
+4100/16384 in 9.03h | UNSAT 4100 SAT 0 UNK 0 | 454/h | ~27.1h left
+4150/16384 in 9.32h | UNSAT 4150 SAT 0 UNK 0 | 445/h | ~27.5h left
+4200/16384 in 9.59h | UNSAT 4200 SAT 0 UNK 0 | 438/h | ~27.8h left
+4250/16384 in 9.86h | UNSAT 4250 SAT 0 UNK 0 | 431/h | ~28.1h left
+4300/16384 in 10.08h | UNSAT 4300 SAT 0 UNK 0 | 427/h | ~28.3h left
+4350/16384 in 10.33h | UNSAT 4350 SAT 0 UNK 0 | 421/h | ~28.6h left
+4400/16384 in 10.54h | UNSAT 4400 SAT 0 UNK 0 | 418/h | ~28.7h left
+4450/16384 in 10.78h | UNSAT 4450 SAT 0 UNK 0 | 413/h | ~28.9h left
+4500/16384 in 11.03h | UNSAT 4500 SAT 0 UNK 0 | 408/h | ~29.1h left
+4550/16384 in 11.28h | UNSAT 4550 SAT 0 UNK 0 | 404/h | ~29.3h left
+4600/16384 in 11.52h | UNSAT 4600 SAT 0 UNK 0 | 399/h | ~29.5h left
+4650/16384 in 11.73h | UNSAT 4650 SAT 0 UNK 0 | 396/h | ~29.6h left
+4700/16384 in 11.99h | UNSAT 4700 SAT 0 UNK 0 | 392/h | ~29.8h left
+4750/16384 in 12.21h | UNSAT 4750 SAT 0 UNK 0 | 389/h | ~29.9h left
+4800/16384 in 12.48h | UNSAT 4800 SAT 0 UNK 0 | 385/h | ~30.1h left
+4850/16384 in 12.82h | UNSAT 4850 SAT 0 UNK 0 | 378/h | ~30.5h left
+4900/16384 in 13.10h | UNSAT 4900 SAT 0 UNK 0 | 374/h | ~30.7h left
+4950/16384 in 13.34h | UNSAT 4950 SAT 0 UNK 0 | 371/h | ~30.8h left
+5000/16384 in 13.62h | UNSAT 5000 SAT 0 UNK 0 | 367/h | ~31.0h left
+5050/16384 in 13.90h | UNSAT 5050 SAT 0 UNK 0 | 363/h | ~31.2h left
+5100/16384 in 14.15h | UNSAT 5100 SAT 0 UNK 0 | 361/h | ~31.3h left
+5150/16384 in 14.48h | UNSAT 5150 SAT 0 UNK 0 | 356/h | ~31.6h left
+5200/16384 in 14.73h | UNSAT 5200 SAT 0 UNK 0 | 353/h | ~31.7h left
+^C[2026-08-20 17:56:12] === campaign orchestrator starting ===
+[2026-08-20 17:56:14] start totalizer-wave: C:\Users\lambe\AppData\Local\Programs\Python\Python313\python.exe C:\dev\DiscrepancyRecords\scratch\cube_wave2.py wave wave274tot 16 2400
+50/16384 in 0.00h | UNSAT 50 SAT 0 UNK 0 | 287155/h | ~0.1h left
+100/16384 in 0.00h | UNSAT 100 SAT 0 UNK 0 | 312011/h | ~0.1h left
+150/16384 in 0.00h | UNSAT 150 SAT 0 UNK 0 | 463370/h | ~0.0h left
+200/16384 in 0.00h | UNSAT 200 SAT 0 UNK 0 | 611852/h | ~0.0h left
+250/16384 in 0.00h | UNSAT 250 SAT 0 UNK 0 | 758358/h | ~0.0h left
+300/16384 in 0.00h | UNSAT 300 SAT 0 UNK 0 | 901441/h | ~0.0h left
+350/16384 in 0.00h | UNSAT 350 SAT 0 UNK 0 | 1041354/h | ~0.0h left
+400/16384 in 0.00h | UNSAT 400 SAT 0 UNK 0 | 1179262/h | ~0.0h left
+450/16384 in 0.00h | UNSAT 450 SAT 0 UNK 0 | 1313877/h | ~0.0h left
+500/16384 in 0.00h | UNSAT 500 SAT 0 UNK 0 | 1446641/h | ~0.0h left
+550/16384 in 0.00h | UNSAT 550 SAT 0 UNK 0 | 1576190/h | ~0.0h left
+600/16384 in 0.00h | UNSAT 600 SAT 0 UNK 0 | 1704795/h | ~0.0h left
+650/16384 in 0.00h | UNSAT 650 SAT 0 UNK 0 | 1831074/h | ~0.0h left
+700/16384 in 0.00h | UNSAT 700 SAT 0 UNK 0 | 1954362/h | ~0.0h left
+750/16384 in 0.00h | UNSAT 750 SAT 0 UNK 0 | 2074482/h | ~0.0h left
+800/16384 in 0.00h | UNSAT 800 SAT 0 UNK 0 | 2195273/h | ~0.0h left
+850/16384 in 0.00h | UNSAT 850 SAT 0 UNK 0 | 2311973/h | ~0.0h left
+900/16384 in 0.00h | UNSAT 900 SAT 0 UNK 0 | 2424923/h | ~0.0h left
+950/16384 in 0.00h | UNSAT 950 SAT 0 UNK 0 | 2541452/h | ~0.0h left
+1000/16384 in 0.00h | UNSAT 1000 SAT 0 UNK 0 | 2652038/h | ~0.0h left
+1050/16384 in 0.00h | UNSAT 1050 SAT 0 UNK 0 | 2759032/h | ~0.0h left
+1100/16384 in 0.00h | UNSAT 1100 SAT 0 UNK 0 | 2863869/h | ~0.0h left
+1150/16384 in 0.00h | UNSAT 1150 SAT 0 UNK 0 | 2967946/h | ~0.0h left
+1200/16384 in 0.00h | UNSAT 1200 SAT 0 UNK 0 | 3069149/h | ~0.0h left
+1250/16384 in 0.00h | UNSAT 1250 SAT 0 UNK 0 | 3172390/h | ~0.0h left
+1300/16384 in 0.00h | UNSAT 1300 SAT 0 UNK 0 | 3271314/h | ~0.0h left
+1350/16384 in 0.00h | UNSAT 1350 SAT 0 UNK 0 | 3369271/h | ~0.0h left
+1400/16384 in 0.00h | UNSAT 1400 SAT 0 UNK 0 | 3464967/h | ~0.0h left
+1450/16384 in 0.00h | UNSAT 1450 SAT 0 UNK 0 | 3558833/h | ~0.0h left
+1500/16384 in 0.00h | UNSAT 1500 SAT 0 UNK 0 | 3648174/h | ~0.0h left
+1550/16384 in 0.00h | UNSAT 1550 SAT 0 UNK 0 | 3736286/h | ~0.0h left
+1600/16384 in 0.00h | UNSAT 1600 SAT 0 UNK 0 | 3830011/h | ~0.0h left
+1650/16384 in 0.00h | UNSAT 1650 SAT 0 UNK 0 | 3922096/h | ~0.0h left
+1700/16384 in 0.00h | UNSAT 1700 SAT 0 UNK 0 | 4013342/h | ~0.0h left
+1750/16384 in 0.00h | UNSAT 1750 SAT 0 UNK 0 | 4102013/h | ~0.0h left
+1800/16384 in 0.00h | UNSAT 1800 SAT 0 UNK 0 | 4194296/h | ~0.0h left
+1850/16384 in 0.00h | UNSAT 1850 SAT 0 UNK 0 | 4284370/h | ~0.0h left
+1900/16384 in 0.00h | UNSAT 1900 SAT 0 UNK 0 | 4374133/h | ~0.0h left
+1950/16384 in 0.00h | UNSAT 1950 SAT 0 UNK 0 | 4464166/h | ~0.0h left
+2000/16384 in 0.00h | UNSAT 2000 SAT 0 UNK 0 | 4551581/h | ~0.0h left
+2050/16384 in 0.00h | UNSAT 2050 SAT 0 UNK 0 | 4639308/h | ~0.0h left
+2100/16384 in 0.00h | UNSAT 2100 SAT 0 UNK 0 | 4724963/h | ~0.0h left
+2150/16384 in 0.00h | UNSAT 2150 SAT 0 UNK 0 | 4811447/h | ~0.0h left
+2200/16384 in 0.00h | UNSAT 2200 SAT 0 UNK 0 | 4896457/h | ~0.0h left
+2250/16384 in 0.00h | UNSAT 2250 SAT 0 UNK 0 | 4983349/h | ~0.0h left
+2300/16384 in 0.00h | UNSAT 2300 SAT 0 UNK 0 | 3814260/h | ~0.0h left
+2350/16384 in 0.00h | UNSAT 2350 SAT 0 UNK 0 | 3896892/h | ~0.0h left
+2400/16384 in 0.00h | UNSAT 2400 SAT 0 UNK 0 | 3979628/h | ~0.0h left
+2450/16384 in 0.00h | UNSAT 2450 SAT 0 UNK 0 | 4062375/h | ~0.0h left
+2500/16384 in 0.00h | UNSAT 2500 SAT 0 UNK 0 | 4145122/h | ~0.0h left
+2550/16384 in 0.00h | UNSAT 2550 SAT 0 UNK 0 | 4227854/h | ~0.0h left
+2600/16384 in 0.00h | UNSAT 2600 SAT 0 UNK 0 | 4310555/h | ~0.0h left
+2650/16384 in 0.00h | UNSAT 2650 SAT 0 UNK 0 | 4393269/h | ~0.0h left
+2700/16384 in 0.00h | UNSAT 2700 SAT 0 UNK 0 | 4475983/h | ~0.0h left
+2750/16384 in 0.00h | UNSAT 2750 SAT 0 UNK 0 | 4558685/h | ~0.0h left
+2800/16384 in 0.00h | UNSAT 2800 SAT 0 UNK 0 | 4641373/h | ~0.0h left
+2850/16384 in 0.00h | UNSAT 2850 SAT 0 UNK 0 | 4724040/h | ~0.0h left
+2900/16384 in 0.00h | UNSAT 2900 SAT 0 UNK 0 | 4806681/h | ~0.0h left
+2950/16384 in 0.00h | UNSAT 2950 SAT 0 UNK 0 | 4889353/h | ~0.0h left
+3000/16384 in 0.00h | UNSAT 3000 SAT 0 UNK 0 | 4972017/h | ~0.0h left
+3050/16384 in 0.00h | UNSAT 3050 SAT 0 UNK 0 | 5054666/h | ~0.0h left
+3100/16384 in 0.00h | UNSAT 3100 SAT 0 UNK 0 | 5137290/h | ~0.0h left
+3150/16384 in 0.00h | UNSAT 3150 SAT 0 UNK 0 | 5219868/h | ~0.0h left
+3200/16384 in 0.00h | UNSAT 3200 SAT 0 UNK 0 | 5302492/h | ~0.0h left
+3250/16384 in 0.00h | UNSAT 3250 SAT 0 UNK 0 | 5385089/h | ~0.0h left
+3300/16384 in 0.00h | UNSAT 3300 SAT 0 UNK 0 | 5467689/h | ~0.0h left
+3350/16384 in 0.00h | UNSAT 3350 SAT 0 UNK 0 | 5550288/h | ~0.0h left
+3400/16384 in 0.00h | UNSAT 3400 SAT 0 UNK 0 | 5632900/h | ~0.0h left
+3450/16384 in 0.00h | UNSAT 3450 SAT 0 UNK 0 | 5715490/h | ~0.0h left
+3500/16384 in 0.00h | UNSAT 3500 SAT 0 UNK 0 | 5798082/h | ~0.0h left
+3550/16384 in 0.00h | UNSAT 3550 SAT 0 UNK 0 | 5880649/h | ~0.0h left
+3600/16384 in 0.00h | UNSAT 3600 SAT 0 UNK 0 | 5963208/h | ~0.0h left
+3650/16384 in 0.00h | UNSAT 3650 SAT 0 UNK 0 | 6045769/h | ~0.0h left
+3700/16384 in 0.00h | UNSAT 3700 SAT 0 UNK 0 | 6128304/h | ~0.0h left
+3750/16384 in 0.00h | UNSAT 3750 SAT 0 UNK 0 | 6210839/h | ~0.0h left
+3800/16384 in 0.00h | UNSAT 3800 SAT 0 UNK 0 | 6293269/h | ~0.0h left
+3850/16384 in 0.00h | UNSAT 3850 SAT 0 UNK 0 | 6375739/h | ~0.0h left
+3900/16384 in 0.00h | UNSAT 3900 SAT 0 UNK 0 | 6458239/h | ~0.0h left
+3950/16384 in 0.00h | UNSAT 3950 SAT 0 UNK 0 | 6540715/h | ~0.0h left
+4000/16384 in 0.00h | UNSAT 4000 SAT 0 UNK 0 | 6623197/h | ~0.0h left
+4050/16384 in 0.00h | UNSAT 4050 SAT 0 UNK 0 | 6705660/h | ~0.0h left
+4100/16384 in 0.00h | UNSAT 4100 SAT 0 UNK 0 | 6788104/h | ~0.0h left
+4150/16384 in 0.00h | UNSAT 4150 SAT 0 UNK 0 | 6870522/h | ~0.0h left
+4200/16384 in 0.00h | UNSAT 4200 SAT 0 UNK 0 | 6952963/h | ~0.0h left
+4250/16384 in 0.00h | UNSAT 4250 SAT 0 UNK 0 | 7035420/h | ~0.0h left
+4300/16384 in 0.00h | UNSAT 4300 SAT 0 UNK 0 | 7117846/h | ~0.0h left
+4350/16384 in 0.00h | UNSAT 4350 SAT 0 UNK 0 | 7200265/h | ~0.0h left
+4400/16384 in 0.00h | UNSAT 4400 SAT 0 UNK 0 | 7282696/h | ~0.0h left
+4450/16384 in 0.00h | UNSAT 4450 SAT 0 UNK 0 | 7365107/h | ~0.0h left
+4500/16384 in 0.00h | UNSAT 4500 SAT 0 UNK 0 | 7447516/h | ~0.0h left
+4550/16384 in 0.00h | UNSAT 4550 SAT 0 UNK 0 | 7529907/h | ~0.0h left
+4600/16384 in 0.00h | UNSAT 4600 SAT 0 UNK 0 | 7612309/h | ~0.0h left
+4650/16384 in 0.00h | UNSAT 4650 SAT 0 UNK 0 | 7694693/h | ~0.0h left
+4700/16384 in 0.00h | UNSAT 4700 SAT 0 UNK 0 | 7777067/h | ~0.0h left
+4750/16384 in 0.00h | UNSAT 4750 SAT 0 UNK 0 | 7859455/h | ~0.0h left
+4800/16384 in 0.00h | UNSAT 4800 SAT 0 UNK 0 | 7941821/h | ~0.0h left
+4850/16384 in 0.00h | UNSAT 4850 SAT 0 UNK 0 | 8024193/h | ~0.0h left
+4900/16384 in 0.00h | UNSAT 4900 SAT 0 UNK 0 | 8106552/h | ~0.0h left
+4950/16384 in 0.00h | UNSAT 4950 SAT 0 UNK 0 | 8188927/h | ~0.0h left
+5000/16384 in 0.00h | UNSAT 5000 SAT 0 UNK 0 | 8271301/h | ~0.0h left
+5050/16384 in 0.00h | UNSAT 5050 SAT 0 UNK 0 | 8353656/h | ~0.0h left
+5100/16384 in 0.00h | UNSAT 5100 SAT 0 UNK 0 | 8435992/h | ~0.0h left
+5150/16384 in 0.00h | UNSAT 5150 SAT 0 UNK 0 | 8518046/h | ~0.0h left
+5200/16384 in 0.00h | UNSAT 5200 SAT 0 UNK 0 | 8600335/h | ~0.0h left
+5250/16384 in 0.28h | UNSAT 5250 SAT 0 UNK 0 | 19066/h | ~0.6h left
+5300/16384 in 0.46h | UNSAT 5300 SAT 0 UNK 0 | 11468/h | ~1.0h left
+5350/16384 in 0.70h | UNSAT 5350 SAT 0 UNK 0 | 7598/h | ~1.5h left
+5400/16384 in 0.90h | UNSAT 5400 SAT 0 UNK 0 | 5980/h | ~1.8h left
+5450/16384 in 1.14h | UNSAT 5450 SAT 0 UNK 0 | 4774/h | ~2.3h left
+5500/16384 in 1.31h | UNSAT 5500 SAT 0 UNK 0 | 4203/h | ~2.6h left
+^C[2026-08-20 19:18:33] === campaign orchestrator starting ===
+[2026-08-20 19:18:34] start totalizer-wave: C:\Users\lambe\AppData\Local\Programs\Python\Python313\python.exe C:\dev\DiscrepancyRecords\scratch\cube_wave2.py wave wave274tot 16 2400
+50/16384 in 0.00h | UNSAT 50 SAT 0 UNK 0 | 368737/h | ~0.0h left
+100/16384 in 0.00h | UNSAT 100 SAT 0 UNK 0 | 737236/h | ~0.0h left
+150/16384 in 0.00h | UNSAT 150 SAT 0 UNK 0 | 672441/h | ~0.0h left
+200/16384 in 0.00h | UNSAT 200 SAT 0 UNK 0 | 887310/h | ~0.0h left
+250/16384 in 0.00h | UNSAT 250 SAT 0 UNK 0 | 1099622/h | ~0.0h left
+300/16384 in 0.00h | UNSAT 300 SAT 0 UNK 0 | 1308379/h | ~0.0h left
+350/16384 in 0.00h | UNSAT 350 SAT 0 UNK 0 | 1513181/h | ~0.0h left
+400/16384 in 0.00h | UNSAT 400 SAT 0 UNK 0 | 1714869/h | ~0.0h left
+450/16384 in 0.00h | UNSAT 450 SAT 0 UNK 0 | 1913508/h | ~0.0h left
+500/16384 in 0.00h | UNSAT 500 SAT 0 UNK 0 | 2105071/h | ~0.0h left
+550/16384 in 0.00h | UNSAT 550 SAT 0 UNK 0 | 2292579/h | ~0.0h left
+600/16384 in 0.00h | UNSAT 600 SAT 0 UNK 0 | 2480065/h | ~0.0h left
+650/16384 in 0.00h | UNSAT 650 SAT 0 UNK 0 | 2667965/h | ~0.0h left
+700/16384 in 0.00h | UNSAT 700 SAT 0 UNK 0 | 2848881/h | ~0.0h left
+750/16384 in 0.00h | UNSAT 750 SAT 0 UNK 0 | 3026091/h | ~0.0h left
+800/16384 in 0.00h | UNSAT 800 SAT 0 UNK 0 | 3200915/h | ~0.0h left
+850/16384 in 0.00h | UNSAT 850 SAT 0 UNK 0 | 3374591/h | ~0.0h left
+900/16384 in 0.00h | UNSAT 900 SAT 0 UNK 0 | 3540980/h | ~0.0h left
+950/16384 in 0.00h | UNSAT 950 SAT 0 UNK 0 | 3702524/h | ~0.0h left
+1000/16384 in 0.00h | UNSAT 1000 SAT 0 UNK 0 | 3857060/h | ~0.0h left
+1050/16384 in 0.00h | UNSAT 1050 SAT 0 UNK 0 | 4020762/h | ~0.0h left
+1100/16384 in 0.00h | UNSAT 1100 SAT 0 UNK 0 | 4180890/h | ~0.0h left
+1150/16384 in 0.00h | UNSAT 1150 SAT 0 UNK 0 | 4340737/h | ~0.0h left
+1200/16384 in 0.00h | UNSAT 1200 SAT 0 UNK 0 | 4496191/h | ~0.0h left
+1250/16384 in 0.00h | UNSAT 1250 SAT 0 UNK 0 | 4651326/h | ~0.0h left
+1300/16384 in 0.00h | UNSAT 1300 SAT 0 UNK 0 | 4803200/h | ~0.0h left
+1350/16384 in 0.00h | UNSAT 1350 SAT 0 UNK 0 | 4945499/h | ~0.0h left
+1400/16384 in 0.00h | UNSAT 1400 SAT 0 UNK 0 | 5081480/h | ~0.0h left
+1450/16384 in 0.00h | UNSAT 1450 SAT 0 UNK 0 | 5215000/h | ~0.0h left
+1500/16384 in 0.00h | UNSAT 1500 SAT 0 UNK 0 | 5345357/h | ~0.0h left
+1550/16384 in 0.00h | UNSAT 1550 SAT 0 UNK 0 | 5474454/h | ~0.0h left
+1600/16384 in 0.00h | UNSAT 1600 SAT 0 UNK 0 | 5600979/h | ~0.0h left
+1650/16384 in 0.00h | UNSAT 1650 SAT 0 UNK 0 | 5727427/h | ~0.0h left
+1700/16384 in 0.00h | UNSAT 1700 SAT 0 UNK 0 | 5851469/h | ~0.0h left
+1750/16384 in 0.00h | UNSAT 1750 SAT 0 UNK 0 | 5909702/h | ~0.0h left
+1800/16384 in 0.00h | UNSAT 1800 SAT 0 UNK 0 | 6077553/h | ~0.0h left
+1850/16384 in 0.00h | UNSAT 1850 SAT 0 UNK 0 | 6227129/h | ~0.0h left
+1900/16384 in 0.00h | UNSAT 1900 SAT 0 UNK 0 | 6351248/h | ~0.0h left
+1950/16384 in 0.00h | UNSAT 1950 SAT 0 UNK 0 | 6475319/h | ~0.0h left
+2000/16384 in 0.00h | UNSAT 2000 SAT 0 UNK 0 | 6591058/h | ~0.0h left
+2050/16384 in 0.00h | UNSAT 2050 SAT 0 UNK 0 | 6710246/h | ~0.0h left
+2100/16384 in 0.00h | UNSAT 2100 SAT 0 UNK 0 | 6824245/h | ~0.0h left
+2150/16384 in 0.00h | UNSAT 2150 SAT 0 UNK 0 | 6939674/h | ~0.0h left
+2200/16384 in 0.00h | UNSAT 2200 SAT 0 UNK 0 | 7055710/h | ~0.0h left
+2250/16384 in 0.00h | UNSAT 2250 SAT 0 UNK 0 | 7167749/h | ~0.0h left
+2300/16384 in 0.00h | UNSAT 2300 SAT 0 UNK 0 | 7282117/h | ~0.0h left
+2350/16384 in 0.00h | UNSAT 2350 SAT 0 UNK 0 | 7389908/h | ~0.0h left
+2400/16384 in 0.00h | UNSAT 2400 SAT 0 UNK 0 | 7498812/h | ~0.0h left
+2450/16384 in 0.00h | UNSAT 2450 SAT 0 UNK 0 | 7607246/h | ~0.0h left
+2500/16384 in 0.00h | UNSAT 2500 SAT 0 UNK 0 | 7716917/h | ~0.0h left
+2550/16384 in 0.00h | UNSAT 2550 SAT 0 UNK 0 | 7821142/h | ~0.0h left
+2600/16384 in 0.00h | UNSAT 2600 SAT 0 UNK 0 | 7919472/h | ~0.0h left
+2650/16384 in 0.00h | UNSAT 2650 SAT 0 UNK 0 | 8021699/h | ~0.0h left
+2700/16384 in 0.00h | UNSAT 2700 SAT 0 UNK 0 | 8117683/h | ~0.0h left
+2750/16384 in 0.00h | UNSAT 2750 SAT 0 UNK 0 | 8218347/h | ~0.0h left
+2800/16384 in 0.00h | UNSAT 2800 SAT 0 UNK 0 | 8318855/h | ~0.0h left
+2850/16384 in 0.00h | UNSAT 2850 SAT 0 UNK 0 | 8418804/h | ~0.0h left
+2900/16384 in 0.00h | UNSAT 2900 SAT 0 UNK 0 | 8512969/h | ~0.0h left
+2950/16384 in 0.00h | UNSAT 2950 SAT 0 UNK 0 | 8606573/h | ~0.0h left
+3000/16384 in 0.00h | UNSAT 3000 SAT 0 UNK 0 | 8697258/h | ~0.0h left
+3050/16384 in 0.00h | UNSAT 3050 SAT 0 UNK 0 | 8790130/h | ~0.0h left
+3100/16384 in 0.00h | UNSAT 3100 SAT 0 UNK 0 | 8883598/h | ~0.0h left
+3150/16384 in 0.00h | UNSAT 3150 SAT 0 UNK 0 | 8979416/h | ~0.0h left
+3200/16384 in 0.00h | UNSAT 3200 SAT 0 UNK 0 | 9071091/h | ~0.0h left
+3250/16384 in 0.00h | UNSAT 3250 SAT 0 UNK 0 | 9164989/h | ~0.0h left
+3300/16384 in 0.00h | UNSAT 3300 SAT 0 UNK 0 | 9246047/h | ~0.0h left
+3350/16384 in 0.00h | UNSAT 3350 SAT 0 UNK 0 | 9335974/h | ~0.0h left
+3400/16384 in 0.00h | UNSAT 3400 SAT 0 UNK 0 | 9423018/h | ~0.0h left
+3450/16384 in 0.00h | UNSAT 3450 SAT 0 UNK 0 | 9502256/h | ~0.0h left
+3500/16384 in 0.00h | UNSAT 3500 SAT 0 UNK 0 | 9592269/h | ~0.0h left
+3550/16384 in 0.00h | UNSAT 3550 SAT 0 UNK 0 | 9670453/h | ~0.0h left
+3600/16384 in 0.00h | UNSAT 3600 SAT 0 UNK 0 | 9758088/h | ~0.0h left
+3650/16384 in 0.00h | UNSAT 3650 SAT 0 UNK 0 | 9839804/h | ~0.0h left
+3700/16384 in 0.00h | UNSAT 3700 SAT 0 UNK 0 | 9925634/h | ~0.0h left
+3750/16384 in 0.00h | UNSAT 3750 SAT 0 UNK 0 | 9997268/h | ~0.0h left
+3800/16384 in 0.00h | UNSAT 3800 SAT 0 UNK 0 | 10079420/h | ~0.0h left
+3850/16384 in 0.00h | UNSAT 3850 SAT 0 UNK 0 | 10156550/h | ~0.0h left
+3900/16384 in 0.00h | UNSAT 3900 SAT 0 UNK 0 | 10238245/h | ~0.0h left
+3950/16384 in 0.00h | UNSAT 3950 SAT 0 UNK 0 | 10320469/h | ~0.0h left
+4000/16384 in 0.00h | UNSAT 4000 SAT 0 UNK 0 | 10402122/h | ~0.0h left
+4050/16384 in 0.00h | UNSAT 4050 SAT 0 UNK 0 | 10487842/h | ~0.0h left
+4100/16384 in 0.00h | UNSAT 4100 SAT 0 UNK 0 | 10565127/h | ~0.0h left
+4150/16384 in 0.00h | UNSAT 4150 SAT 0 UNK 0 | 10646237/h | ~0.0h left
+4200/16384 in 0.00h | UNSAT 4200 SAT 0 UNK 0 | 10728694/h | ~0.0h left
+4250/16384 in 0.00h | UNSAT 4250 SAT 0 UNK 0 | 10806376/h | ~0.0h left
+4300/16384 in 0.00h | UNSAT 4300 SAT 0 UNK 0 | 10883945/h | ~0.0h left
+4350/16384 in 0.00h | UNSAT 4350 SAT 0 UNK 0 | 10958583/h | ~0.0h left
+4400/16384 in 0.00h | UNSAT 4400 SAT 0 UNK 0 | 11025403/h | ~0.0h left
+4450/16384 in 0.00h | UNSAT 4450 SAT 0 UNK 0 | 11092721/h | ~0.0h left
+4500/16384 in 0.00h | UNSAT 4500 SAT 0 UNK 0 | 11163628/h | ~0.0h left
+4550/16384 in 0.00h | UNSAT 4550 SAT 0 UNK 0 | 11238622/h | ~0.0h left
+4600/16384 in 0.00h | UNSAT 4600 SAT 0 UNK 0 | 11305069/h | ~0.0h left
+4650/16384 in 0.00h | UNSAT 4650 SAT 0 UNK 0 | 11382034/h | ~0.0h left
+4700/16384 in 0.00h | UNSAT 4700 SAT 0 UNK 0 | 11441901/h | ~0.0h left
+4750/16384 in 0.00h | UNSAT 4750 SAT 0 UNK 0 | 11497459/h | ~0.0h left
+4800/16384 in 0.00h | UNSAT 4800 SAT 0 UNK 0 | 11557060/h | ~0.0h left
+4850/16384 in 0.00h | UNSAT 4850 SAT 0 UNK 0 | 11612220/h | ~0.0h left
+4900/16384 in 0.00h | UNSAT 4900 SAT 0 UNK 0 | 11677740/h | ~0.0h left
+4950/16384 in 0.00h | UNSAT 4950 SAT 0 UNK 0 | 11729401/h | ~0.0h left
+5000/16384 in 0.00h | UNSAT 5000 SAT 0 UNK 0 | 11792854/h | ~0.0h left
+5050/16384 in 0.00h | UNSAT 5050 SAT 0 UNK 0 | 11859081/h | ~0.0h left
+5100/16384 in 0.00h | UNSAT 5100 SAT 0 UNK 0 | 11933529/h | ~0.0h left
+5150/16384 in 0.00h | UNSAT 5150 SAT 0 UNK 0 | 12010863/h | ~0.0h left
+5200/16384 in 0.00h | UNSAT 5200 SAT 0 UNK 0 | 12075397/h | ~0.0h left
+5250/16384 in 0.00h | UNSAT 5250 SAT 0 UNK 0 | 12140097/h | ~0.0h left
+5300/16384 in 0.00h | UNSAT 5300 SAT 0 UNK 0 | 12212238/h | ~0.0h left
+5350/16384 in 0.00h | UNSAT 5350 SAT 0 UNK 0 | 12281357/h | ~0.0h left
+5400/16384 in 0.00h | UNSAT 5400 SAT 0 UNK 0 | 12354811/h | ~0.0h left
+5450/16384 in 0.00h | UNSAT 5450 SAT 0 UNK 0 | 12419045/h | ~0.0h left
+5500/16384 in 0.00h | UNSAT 5500 SAT 0 UNK 0 | 12493412/h | ~0.0h left
+[2026-08-20 19:33:09] === campaign orchestrator starting ===
+[2026-08-20 19:33:09] start totalizer-wave: C:\Users\lambe\AppData\Local\Programs\Python\Python313\python.exe C:\dev\DiscrepancyRecords\scratch\cube_wave2.py wave wave274tot 16 2400
+[2026-08-20 20:10:05] end totalizer-wave: rc=3221225786
+[2026-08-20 20:10:06] totalizer-wave verdicts: UNSAT=5759 SAT=0 other=8
+[2026-08-20 20:10:07] retry round 1: 8 unresolved cubes at 7200s
+[2026-08-20 20:10:07] start totalizer-retry-1: C:\Users\lambe\AppData\Local\Programs\Python\Python313\python.exe C:\dev\DiscrepancyRecords\scratch\cube_wave2.py wave wave274tot 8 7200
+[2026-08-20 20:10:18] end totalizer-retry-1: rc=3221225786
+[2026-08-20 20:10:19] totalizer-retry-1 verdicts: UNSAT=5759 SAT=0 other=14
+[2026-08-20 20:10:20] retry round 2: 14 unresolved cubes at 7200s
+[2026-08-20 20:10:20] start totalizer-retry-2: C:\Users\lambe\AppData\Local\Programs\Python\Python313\python.exe C:\dev\DiscrepancyRecords\scratch\cube_wave2.py wave wave274tot 8 7200
+[2026-08-20 20:10:23] end totalizer-retry-2: rc=3221225786
+[2026-08-20 20:10:24] totalizer-retry-2 verdicts: UNSAT=5759 SAT=0 other=15
+[2026-08-20 20:10:24] totalizer-final verdicts: UNSAT=5759 SAT=0 other=15
+[2026-08-20 20:10:24] HALT: only 5759/16384 UNSAT after retries - hard cubes remain; a session must decide the budget
+[2026-08-20 20:13:06] === campaign orchestrator starting ===
+[2026-08-20 20:13:07] start totalizer-wave: C:\Users\lambe\AppData\Local\Programs\Python\Python313\python.exe C:\dev\DiscrepancyRecords\scratch\cube_wave2.py wave wave274tot 16 2400
+[2026-08-20 22:10:20] === campaign orchestrator starting ===
+[2026-08-20 22:10:20] start totalizer-wave: C:\Users\lambe\AppData\Local\Programs\Python\Python313\python.exe C:\dev\DiscrepancyRecords\scratch\cube_wave2.py wave wave274tot 16 2400
+[2026-08-22 17:03:21] === campaign orchestrator starting ===
+Traceback (most recent call last):
+  File "C:\dev\DiscrepancyRecords\scratch\run_campaign.py", line 224, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "C:\dev\DiscrepancyRecords\scratch\run_campaign.py", line 122, in main
+    c = counts("wave274tot")
+  File "C:\dev\DiscrepancyRecords\scratch\run_campaign.py", line 89, in counts
+    v = json.load(open(os.path.join(verd, f), encoding="ascii"))
+  File "C:\Users\lambe\AppData\Local\Programs\Python\Python313\Lib\json\__init__.py", line 298, in load
+    return loads(fp.read(),
+        cls=cls, object_hook=object_hook,
+        parse_float=parse_float, parse_int=parse_int,
+        parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)
+  File "C:\Users\lambe\AppData\Local\Programs\Python\Python313\Lib\json\__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "C:\Users\lambe\AppData\Local\Programs\Python\Python313\Lib\json\decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\lambe\AppData\Local\Programs\Python\Python313\Lib\json\decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+[2026-08-22 17:06:38] === campaign orchestrator starting ===
+[2026-08-22 17:06:39] start totalizer-wave: C:\Users\lambe\AppData\Local\Programs\Python\Python313\python.exe C:\dev\DiscrepancyRecords\scratch\cube_wave2.py wave wave274tot 16 2400
+[2026-08-22 17:40:26] === campaign orchestrator starting ===
+[2026-08-22 17:40:28] start totalizer-wave: C:\Users\lambe\AppData\Local\Programs\Python\Python313\python.exe C:\dev\DiscrepancyRecords\scratch\cube_wave2.py wave wave274tot 16 2400
+[2026-08-23 01:02:53] end totalizer-wave: rc=0
+[2026-08-23 01:02:54] totalizer-wave verdicts: UNSAT=16384 SAT=0 other=0
+[2026-08-23 01:02:56] totalizer-final verdicts: UNSAT=16384 SAT=0 other=0
+[2026-08-23 01:02:56] PHASE 1+2 COMPLETE: all 16384 totalizer cubes UNSAT
+[2026-08-23 01:02:56] start drat-check-pass: C:\Users\lambe\AppData\Local\Programs\Python\Python313\python.exe C:\dev\DiscrepancyRecords\scratch\check_pass.py wave274tot 14
+[2026-08-24 02:13:33] end drat-check-pass: rc=1
+[2026-08-24 02:13:33] HALT: check pass reported failures - do NOT proceed

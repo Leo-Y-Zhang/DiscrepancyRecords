@@ -1,0 +1,345 @@
+{
+ "MEMORY.md.before": {
+  "observations": 3,
+  "newest": "2026-08-19T19:29:11.179Z",
+  "source": "Read",
+  "bytes": 20134,
+  "edits_after": 0
+ },
+ "await_campaign.sh": {
+  "observations": 1,
+  "newest": "2026-08-20T02:36:07.559Z",
+  "source": "Write",
+  "bytes": 1590,
+  "edits_after": 0
+ },
+ "campaign_state.py": {
+  "observations": 6,
+  "newest": "2026-08-21T18:52:19.054Z",
+  "source": "Read",
+  "bytes": 4919,
+  "edits_after": 10
+ },
+ "campaign_status.ps1": {
+  "observations": 1,
+  "newest": "2026-08-19T19:33:23.862Z",
+  "source": "Write",
+  "bytes": 679,
+  "edits_after": 0
+ },
+ "check_and_prune.py": {
+  "observations": 6,
+  "newest": "2026-08-23T00:52:12.165Z",
+  "source": "Read",
+  "bytes": 10747,
+  "edits_after": 0
+ },
+ "check_lid.ps1": {
+  "observations": 1,
+  "newest": "2026-08-19T17:26:17.318Z",
+  "source": "Write",
+  "bytes": 224,
+  "edits_after": 0
+ },
+ "check_pass.py": {
+  "observations": 8,
+  "newest": "2026-08-24T01:03:06.994Z",
+  "source": "Read",
+  "bytes": 12033,
+  "edits_after": 0
+ },
+ "claude_sessions.ps1": {
+  "observations": 1,
+  "newest": "2026-08-19T18:27:03.826Z",
+  "source": "Write",
+  "bytes": 354,
+  "edits_after": 0
+ },
+ "close_sample_gap.py": {
+  "observations": 1,
+  "newest": "2026-08-24T01:07:21.223Z",
+  "source": "Write",
+  "bytes": 4544,
+  "edits_after": 0
+ },
+ "console_immunity.py": {
+  "observations": 1,
+  "newest": "2026-08-20T18:23:55.984Z",
+  "source": "Write",
+  "bytes": 1952,
+  "edits_after": 0
+ },
+ "crash_cleanup.py": {
+  "observations": 4,
+  "newest": "2026-08-20T17:04:25.596Z",
+  "source": "Read",
+  "bytes": 2840,
+  "edits_after": 4
+ },
+ "cube_wave2.py": {
+  "observations": 3,
+  "newest": "2026-08-20T17:04:25.423Z",
+  "source": "Read",
+  "bytes": 7924,
+  "edits_after": 4
+ },
+ "detach.py": {
+  "observations": 3,
+  "newest": "2026-08-20T18:23:39.720Z",
+  "source": "Write",
+  "bytes": 4008,
+  "edits_after": 6
+ },
+ "gzip_loop.py": {
+  "observations": 1,
+  "newest": "2026-08-19T17:01:40.909Z",
+  "source": "Read-partial!",
+  "bytes": 596,
+  "edits_after": 0
+ },
+ "launch_detached.ps1": {
+  "observations": 1,
+  "newest": "2026-08-19T17:03:22.092Z",
+  "source": "Write",
+  "bytes": 531,
+  "edits_after": 0
+ },
+ "launch_pruner.ps1": {
+  "observations": 1,
+  "newest": "2026-08-19T18:58:46.684Z",
+  "source": "Write",
+  "bytes": 411,
+  "edits_after": 0
+ },
+ "launch_sample_pruner.ps1": {
+  "observations": 1,
+  "newest": "2026-08-19T19:23:35.562Z",
+  "source": "Write",
+  "bytes": 413,
+  "edits_after": 0
+ },
+ "lid_gap.py": {
+  "observations": 1,
+  "newest": "2026-08-19T17:32:04.837Z",
+  "source": "Write",
+  "bytes": 944,
+  "edits_after": 0
+ },
+ "list_terminals.ps1": {
+  "observations": 1,
+  "newest": "2026-08-19T20:33:05.239Z",
+  "source": "Write",
+  "bytes": 645,
+  "edits_after": 0
+ },
+ "mem_check.ps1": {
+  "observations": 1,
+  "newest": "2026-08-19T19:47:00.342Z",
+  "source": "Write",
+  "bytes": 753,
+  "edits_after": 0
+ },
+ "preflight_check_pass.py": {
+  "observations": 1,
+  "newest": "2026-08-20T02:22:19.841Z",
+  "source": "Write",
+  "bytes": 2982,
+  "edits_after": 0
+ },
+ "preflight_phase3.py": {
+  "observations": 1,
+  "newest": "2026-08-20T17:14:06.536Z",
+  "source": "Write",
+  "bytes": 7236,
+  "edits_after": 0
+ },
+ "redeclare_sample.py": {
+  "observations": 1,
+  "newest": "2026-08-19T21:54:39.651Z",
+  "source": "Write",
+  "bytes": 5730,
+  "edits_after": 1
+ },
+ "register_resume_task.ps1": {
+  "observations": 1,
+  "newest": "2026-08-19T21:58:20.113Z",
+  "source": "Write",
+  "bytes": 648,
+  "edits_after": 0
+ },
+ "restart_with_fix.ps1": {
+  "observations": 1,
+  "newest": "2026-08-22T16:40:09.165Z",
+  "source": "Write",
+  "bytes": 2909,
+  "edits_after": 0
+ },
+ "resume_campaign.ps1": {
+  "observations": 5,
+  "newest": "2026-08-20T18:17:43.152Z",
+  "source": "Read",
+  "bytes": 6182,
+  "edits_after": 9
+ },
+ "run_campaign.py": {
+  "observations": 9,
+  "newest": "2026-08-24T00:59:41.921Z",
+  "source": "Read",
+  "bytes": 10903,
+  "edits_after": 0
+ },
+ "sample_prune.py": {
+  "observations": 10,
+  "newest": "2026-08-23T00:52:12.156Z",
+  "source": "Read",
+  "bytes": 12085,
+  "edits_after": 0
+ },
+ "set_lid_action.ps1": {
+  "observations": 1,
+  "newest": "2026-08-19T17:25:54.358Z",
+  "source": "Write",
+  "bytes": 654,
+  "edits_after": 0
+ },
+ "standby_gap.py": {
+  "observations": 1,
+  "newest": "2026-08-20T02:13:37.480Z",
+  "source": "Write",
+  "bytes": 1288,
+  "edits_after": 0
+ },
+ "start_watchdog.ps1": {
+  "observations": 2,
+  "newest": "2026-08-20T18:37:13.822Z",
+  "source": "Write",
+  "bytes": 3483,
+  "edits_after": 0
+ },
+ "stop_gzip.ps1": {
+  "observations": 1,
+  "newest": "2026-08-19T19:27:10.986Z",
+  "source": "Write",
+  "bytes": 437,
+  "edits_after": 0
+ },
+ "stop_pruner.ps1": {
+  "observations": 1,
+  "newest": "2026-08-19T19:21:20.828Z",
+  "source": "Write",
+  "bytes": 681,
+  "edits_after": 0
+ },
+ "stop_wave2.ps1": {
+  "observations": 1,
+  "newest": "2026-08-19T21:04:39.277Z",
+  "source": "Write",
+  "bytes": 1046,
+  "edits_after": 0
+ },
+ "test_campaign_state_standby.py": {
+  "observations": 2,
+  "newest": "2026-08-21T18:55:07.963Z",
+  "source": "Write",
+  "bytes": 5148,
+  "edits_after": 4
+ },
+ "test_checker_isolation.py": {
+  "observations": 1,
+  "newest": "2026-08-20T17:05:51.639Z",
+  "source": "Write",
+  "bytes": 4866,
+  "edits_after": 1
+ },
+ "test_checker_kill_classification.py": {
+  "observations": 1,
+  "newest": "2026-08-20T21:08:28.804Z",
+  "source": "Write",
+  "bytes": 4866,
+  "edits_after": 0
+ },
+ "test_console_immunity.py": {
+  "observations": 1,
+  "newest": "2026-08-20T18:27:30.619Z",
+  "source": "Write",
+  "bytes": 5727,
+  "edits_after": 6
+ },
+ "test_halt_guard.ps1": {
+  "observations": 1,
+  "newest": "2026-08-19T22:46:20.390Z",
+  "source": "Write",
+  "bytes": 2079,
+  "edits_after": 0
+ },
+ "test_missing_proof_classification.py": {
+  "observations": 1,
+  "newest": "2026-08-24T01:04:56.528Z",
+  "source": "Write",
+  "bytes": 6457,
+  "edits_after": 0
+ },
+ "test_no_console_window.py": {
+  "observations": 2,
+  "newest": "2026-08-20T20:57:51.874Z",
+  "source": "Write",
+  "bytes": 10907,
+  "edits_after": 2
+ },
+ "test_verdict_durability.py": {
+  "observations": 1,
+  "newest": "2026-08-22T16:13:41.709Z",
+  "source": "Write",
+  "bytes": 8253,
+  "edits_after": 1
+ },
+ "test_watchdog_stall.py": {
+  "observations": 1,
+  "newest": "2026-08-22T16:20:57.205Z",
+  "source": "Write",
+  "bytes": 5073,
+  "edits_after": 1
+ },
+ "throughput.py": {
+  "observations": 1,
+  "newest": "2026-08-19T21:03:51.942Z",
+  "source": "Write",
+  "bytes": 1453,
+  "edits_after": 0
+ },
+ "verdict_io.py": {
+  "observations": 1,
+  "newest": "2026-08-22T16:14:32.084Z",
+  "source": "Write",
+  "bytes": 4846,
+  "edits_after": 0
+ },
+ "verify_alive.ps1": {
+  "observations": 1,
+  "newest": "2026-08-19T17:05:48.494Z",
+  "source": "Write",
+  "bytes": 401,
+  "edits_after": 0
+ },
+ "verify_detached.py": {
+  "observations": 2,
+  "newest": "2026-08-20T21:05:44.433Z",
+  "source": "Write",
+  "bytes": 7630,
+  "edits_after": 0
+ },
+ "watchdog.ps1": {
+  "observations": 6,
+  "newest": "2026-08-20T18:22:59.383Z",
+  "source": "Read",
+  "bytes": 10022,
+  "edits_after": 2
+ },
+ "watchdog.py": {
+  "observations": 6,
+  "newest": "2026-08-20T18:36:50.815Z",
+  "source": "Write",
+  "bytes": 10185,
+  "edits_after": 6
+ }
+}

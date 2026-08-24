@@ -17,8 +17,25 @@ evidence/waves/**/proofs/
 # `<instance>.cnf.body.tmp`, which the `*.cnf` patterns above do not match.
 *.body.tmp
 
-# Local scratch
-scratch/
+# Local scratch - ARTEFACTS ONLY.
+#
+# This was a bare `scratch/` until 2026-08-24, which meant the ENTIRE campaign
+# pipeline - orchestrator, wave driver, pruner, checker, watchdog, the console
+# and durability fixes and all their tests - lived in a gitignored directory
+# with no backup anywhere. `git status` reported the clone clean and
+# `git ls-remote` confirmed HEAD was on origin, so an idle-clone cleanup
+# deleted it: 99.1 GB of results and six days of pipeline source, gone, with
+# both safety checks reporting green. A CLEAN TREE IS NOT AN EMPTY DIRECTORY.
+#
+# The SOURCE is tracked from here on. Only the multi-gigabyte artefacts and
+# the machine-local run state are ignored.
+scratch/wave*/
+scratch/nk2snap/
+scratch/*.log
+scratch/*.pid
+scratch/*.pid.error
+scratch/__pycache__/
+scratch/*.jsonl
 
 # Python
 __pycache__/
