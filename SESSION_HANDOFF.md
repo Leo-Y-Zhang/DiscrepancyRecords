@@ -4,10 +4,11 @@ Updated: 2026-08-19 (mid-campaign), plus the 2026-08-24 block immediately below.
 
 ## STOP - READ BEFORE MOVING OR RENAMING THIS DIRECTORY (2026-08-24)
 
-This clone currently lives at `C:\dev\DiscrepancyRecords_restored`, not at
-`C:\dev\DiscrepancyRecords`. The plan on the daily board is to delete the old
-husk and rename this one onto its proper name. **Do not do that while the
-campaign is running.** It is due to finish Fri 28 Aug ~17:00.
+This clone's directory is named `DiscrepancyRecords_restored`, not
+`DiscrepancyRecords`; both sit side by side under this machine's code root. The
+plan on the daily board is to delete the old husk and rename this one onto its
+proper name. **Do not do that while the campaign is running.** It is due to
+finish Fri 28 Aug ~17:00.
 
 Two independent reasons, both verified on 2026-08-24 rather than assumed:
 
@@ -16,17 +17,24 @@ Two independent reasons, both verified on 2026-08-24 rather than assumed:
    them is the same class of act as the deletion that created this mess.
 
 2. **The logon resume hook now points HERE by name.**
-   `Startup\resume-erdos-campaign.cmd` runs
-   `C:\dev\DiscrepancyRecords_restored\scratch\start_watchdog.ps1`. It was
-   repointed at this path after the deletion left it aimed at a script that no
-   longer existed, which would have silently resumed nothing after a reboot.
-   **Renaming the directory breaks it again, in the opposite direction.**
-   Whoever renames it must repoint that hook in the same breath.
+   `Startup\resume-erdos-campaign.cmd` runs `scratch\start_watchdog.ps1` inside
+   this directory, naming it in full. It was repointed here after the deletion
+   left it aimed at a script that no longer existed, which would have silently
+   resumed nothing after a reboot. **Renaming the directory breaks it again, in
+   the opposite direction.** Whoever renames it must repoint that hook in the
+   same breath.
 
 Nothing about the rename is urgent. The directory name costs nothing; the
 campaign costs days. Copy the four surviving logs out of the old husk before
 deleting it - `campaign.log` holds the phase 1 result and is the only record of
 it.
+
+Paths in this section are deliberately written relative. Gate rule G6 rejects an
+absolute path in any tracked file: a machine path is unportable, and it is a
+piece of this particular box's identity that has no business in a public repo.
+The first version of this block carried three of them and turned the whole gate
+red - `verify_all.py` stops at the first failure and reports "this repository
+asserts nothing", so one handoff note took every claim down with it.
 
 ### Also open, and deliberately so
 
