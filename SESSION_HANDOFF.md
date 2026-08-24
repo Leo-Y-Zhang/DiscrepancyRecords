@@ -1,6 +1,44 @@
 # Session handoff
 
-Updated: 2026-08-19 (mid-campaign).
+Updated: 2026-08-19 (mid-campaign), plus the 2026-08-24 block immediately below.
+
+## STOP - READ BEFORE MOVING OR RENAMING THIS DIRECTORY (2026-08-24)
+
+This clone currently lives at `C:\dev\DiscrepancyRecords_restored`, not at
+`C:\dev\DiscrepancyRecords`. The plan on the daily board is to delete the old
+husk and rename this one onto its proper name. **Do not do that while the
+campaign is running.** It is due to finish Fri 28 Aug ~17:00.
+
+Two independent reasons, both verified on 2026-08-24 rather than assumed:
+
+1. **26 live processes are running out of this directory** - the orchestrator,
+   its pool workers and 16 kissat solvers. Renaming a directory out from under
+   them is the same class of act as the deletion that created this mess.
+
+2. **The logon resume hook now points HERE by name.**
+   `Startup\resume-erdos-campaign.cmd` runs
+   `C:\dev\DiscrepancyRecords_restored\scratch\start_watchdog.ps1`. It was
+   repointed at this path after the deletion left it aimed at a script that no
+   longer existed, which would have silently resumed nothing after a reboot.
+   **Renaming the directory breaks it again, in the opposite direction.**
+   Whoever renames it must repoint that hook in the same breath.
+
+Nothing about the rename is urgent. The directory name costs nothing; the
+campaign costs days. Copy the four surviving logs out of the old husk before
+deleting it - `campaign.log` holds the phase 1 result and is the only record of
+it.
+
+### Also open, and deliberately so
+
+`check_pass.classify` does not exist. The eleven tests for it in
+`scratch/test_missing_proof_classification.py` are marked `xfail(strict=True)`,
+so they run, CI stays honest, and the day someone implements it they turn into
+XPASS - which pytest reports as a failure - forcing the marker to be deleted.
+Implementing it means editing `check_pass.py`, which has live processes whose
+pool workers re-import the module on spawn, so it waits for a phase boundary.
+Same reason `scratch/cube_wave2.py` has one lint rule parked in
+`per-file-ignores`; remove that block when the wave ends and re-run
+`ruff check .`.
 
 ## Where this stands
 
