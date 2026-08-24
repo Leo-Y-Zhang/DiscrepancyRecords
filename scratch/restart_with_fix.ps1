@@ -7,7 +7,7 @@
 #
 # Order matters. The watchdog dies FIRST or it restarts what is being stopped.
 $ErrorActionPreference = 'Continue'
-$scratch = 'C:\dev\DiscrepancyRecords\scratch'
+$scratch = $PSScriptRoot
 $py = Join-Path $env:LOCALAPPDATA 'Programs\Python\Python313\python.exe'
 
 function Show($m) { Write-Output ("[{0}] {1}" -f (Get-Date -Format 'HH:mm:ss'), $m) }

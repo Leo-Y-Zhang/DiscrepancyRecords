@@ -13,7 +13,7 @@
 # test script never wrote its output file, and the 19:30 launch reported a PID
 # and then never wrote a line to watchdog.log. Python runs fine detached.
 $ErrorActionPreference = 'Stop'
-$scratch = 'C:\dev\DiscrepancyRecords\scratch'
+$scratch = $PSScriptRoot
 $py = Join-Path $env:LOCALAPPDATA 'Programs\Python\Python313\python.exe'
 $log = Join-Path $scratch 'watchdog_stdio.log'
 $pidfile = Join-Path $scratch 'detach_watchdog.pid'

@@ -25,7 +25,7 @@
 # watchdog.ps1 calls this every five minutes, and
 # Startup\resume-erdos-campaign.cmd starts the watchdog at logon.
 $ErrorActionPreference = 'Stop'
-$scratch = 'C:\dev\DiscrepancyRecords\scratch'
+$scratch = $PSScriptRoot
 $py = Join-Path $env:LOCALAPPDATA 'Programs\Python\Python313\python.exe'
 $stamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
 

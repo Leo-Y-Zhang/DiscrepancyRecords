@@ -24,7 +24,7 @@
 # is not running, refuses to restart through a SAT verdict or a check failure
 # (those are results), and gives up after 25 restarts rather than thrashing.
 $ErrorActionPreference = 'Continue'
-$scratch = 'C:\dev\DiscrepancyRecords\scratch'
+$scratch = $PSScriptRoot
 $log = Join-Path $scratch 'watchdog.log'
 
 # ⚠⚠ 2026-08-20: the thing that kept killing this campaign was a console Ctrl+C,
