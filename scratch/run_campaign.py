@@ -131,8 +131,27 @@ def main():
         # pruner won, gzip_loop never deleted that cube's .cnf, which is how
         # 462 stranded CNFs (7.2 GB) accumulated. sample_prune.py now deletes
         # the .cnf itself, so there is exactly one owner of that job.
+        # --no-proof, 2026-08-24. The target claim is `exact` at `unsat-dual`,
+        # and TDD.md is explicit about what that needs: W6 asks for a second
+        # complete wave from a DIFFERENT encoder with "transcripts optional",
+        # `wave-drat-verified` sorts BELOW `unsat-dual` because encoder
+        # diversity is what the soundness argument rests on, and a --no-proof
+        # wave "imports and verifies at unsat-wave". So the DRAT proofs this
+        # wave used to write were never consumed by the claim being made - the
+        # seqcount wave is the cross-check, not the proofs.
+        #
+        # They were not free: kissat ran with --no-binary, i.e. ASCII DRAT,
+        # averaging 66 MB per cube and 91 GB across the sample. Phase 3 then
+        # spent ~400 core-hours checking a 1,600-cube sample of them for
+        # fail-fast insurance. Dropping proof logging costs the OPTION of ever
+        # declaring wave-drat-verified - a lower tier than the one being
+        # claimed - and buys back the largest block of time available.
+        #
+        # Phase 3 below needs no change: check_pass only queues verdicts
+        # carrying a drat_sha256, so with no proofs it finds nothing to do and
+        # returns 0 immediately.
         run([PY, os.path.join(HERE, "cube_wave2.py"), "wave", "wave274tot",
-             "16", "2400"], "totalizer-wave")
+             "16", "2400", "--no-proof"], "totalizer-wave")
         sat_guard("wave274tot", "totalizer-wave")
         # Phase 2: retries for cubes that hit the 2400s cap
         for rnd in (1, 2):
@@ -141,7 +160,8 @@ def main():
                 break
             log(f"retry round {rnd}: {c['other']} unresolved cubes at 7200s")
             run([PY, os.path.join(HERE, "cube_wave2.py"), "wave",
-                 "wave274tot", "8", "7200"], f"totalizer-retry-{rnd}")
+                 "wave274tot", "8", "7200", "--no-proof"],
+                f"totalizer-retry-{rnd}")
             sat_guard("wave274tot", f"totalizer-retry-{rnd}")
     c = sat_guard("wave274tot", "totalizer-final")
     if c["20"] < total_tot:
