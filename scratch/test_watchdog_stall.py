@@ -41,7 +41,7 @@ def wd(monkeypatch, tmp_path):
 def _add_verdicts(tmp_path, wave, n, start=0):
     d = tmp_path / wave / "verdicts"
     for i in range(start, start + n):
-        (d / f"v{i:05d}.json").write_text('{"cube": %d, "rc": 20}' % i,
+        (d / f"v{i:05d}.json").write_text(f'{{"cube": {i}, "rc": 20}}',
                                           encoding="ascii")
 
 

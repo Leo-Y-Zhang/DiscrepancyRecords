@@ -140,7 +140,7 @@ def take_lock():
     if os.path.exists(LOCK):
         try:
             with open(LOCK, encoding="ascii") as fh:
-                held = int((fh.read().strip() or "0"))
+                held = int(fh.read().strip() or "0")
         except (OSError, ValueError):
             held = 0
         if held and held != os.getpid() and pid_alive_python(held):
@@ -281,9 +281,9 @@ def main():
         return 0
     say(f"watchdog started (PID {os.getpid()}, python, no console), polling every {POLL_SECONDS} s")
     r = assert_awake()
-    say("keep-awake: SetThreadExecutionState returned 0x%08X - %s"
-        % (r, "ASSERTED" if r else
-           "FAILED, the box can idle into standby at half speed"))
+    state = ("ASSERTED" if r
+             else "FAILED, the box can idle into standby at half speed")
+    say(f"keep-awake: SetThreadExecutionState returned 0x{r:08X} - {state}")
 
     last_beat = time.time() - 3600
     last_progress, progress_at, restarts = progress(), time.time(), 0
@@ -301,9 +301,9 @@ def main():
                 sb = standby_since(last_beat)
                 note = (f", STANDBY x{sb} since last beat (wave runs at ~half speed asleep)"
                         if sb > 0 else ", standby count unavailable" if sb < 0 else "")
-                say("alive: %d/16384 verdicts, %d solvers, %d proofs verified%s"
-                    % (count_files(VERDICTS), count_solvers(),
-                       count_lines(TRANSCRIPTS), note))
+                say(f"alive: {count_files(VERDICTS)}/16384 verdicts, "
+                    f"{count_solvers()} solvers, "
+                    f"{count_lines(TRANSCRIPTS)} proofs verified{note}")
                 last_beat = time.time()
 
             for line in run_resume().splitlines():

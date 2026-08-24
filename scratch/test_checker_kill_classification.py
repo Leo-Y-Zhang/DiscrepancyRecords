@@ -21,10 +21,8 @@ Usage:  test_checker_kill_classification.py            run the four cases
                                                        watch case A fail
 """
 import hashlib
-import json
 import os
 import shutil
-import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))

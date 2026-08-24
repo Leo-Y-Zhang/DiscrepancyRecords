@@ -1,5 +1,25 @@
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+# `tests` is the library's suite. The three files under `scratch` are named
+# individually rather than by adding the whole directory, and the distinction is
+# load-bearing: most of scratch's `test_*.py` are STANDALONE SCRIPTS with a
+# `--mutate` mode, meant to be run by hand, not pytest modules. Collecting the
+# directory would import all of them.
+#
+# One of those, `test_checker_kill_classification.py`, sends console control
+# events and builds its fixture wave INSIDE the live scratch directory. A
+# console control event is exactly what took the orchestrator, all 16 kissat
+# workers and the watchdog down together on 2026-08-20. Pytest importing it on
+# the machine that is running the campaign is not a risk worth taking for
+# coverage.
+#
+# These three are safe: every one is hermetic, using `tmp_path` fixtures and
+# monkeypatching the module's paths away from the live wave.
+testpaths = [
+    "tests",
+    "scratch/test_watchdog_stall.py",
+    "scratch/test_verdict_durability.py",
+    "scratch/test_missing_proof_classification.py",
+]
 pythonpath = ["."]
 markers = [
     "solver: needs an external solver binary; skipped when one is not available",
@@ -19,3 +39,22 @@ select = ["E", "F", "W", "I", "B", "UP"]
 # off here deliberately rather than silenced line by line. Nothing else is
 # relaxed.
 ignore = ["E741"]
+
+[tool.ruff.lint.per-file-ignores]
+# DEFERRED, NOT FORGIVEN - remove this the moment the campaign finishes.
+#
+# `scratch/cube_wave2.py` has one UP031 (percent-format at line 76). The fix is
+# a one-line rewrite to an f-string and it is not being applied yet, because on
+# 2026-08-24 that file is RUNNING: `cube_wave2.py wave wave274tot 16 2400`, with
+# a `ProcessPoolExecutor` whose workers Windows spawns by RE-IMPORTING the
+# module from disk. Editing it mid-wave is the one documented way to break a run
+# that is already 5,400+ verdicts deep and stands in for several days of
+# compute, and the campaign is recomputing evidence that was destroyed once
+# already.
+#
+# Silencing the whole file, or the whole rule, would have been the easy version
+# of this and would have hidden the next real finding. This is one rule in one
+# file, and it is a TODO with an owner: when the wave is done, delete this
+# block and run `ruff check .` - it must come back clean with nothing else
+# needing changes.
+"scratch/cube_wave2.py" = ["UP031"]

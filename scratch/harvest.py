@@ -168,7 +168,8 @@ def preflight():
         allunsat = rc.get(20, 0) == spec["n_cubes"]
         ok = ok and complete and nosat and allunsat
         print(f"  {'OK  ' if complete else 'FAIL'} {n}/{spec['n_cubes']} verdicts")
-        print(f"  {'OK  ' if nosat else 'FAIL'} SAT verdicts: {rc.get(10, 0)}  (any SAT DISPROVES 274)")
+        print(f"  {'OK  ' if nosat else 'FAIL'} SAT verdicts: {rc.get(10, 0)}"
+              "  (any SAT DISPROVES 274)")
         print(f"  {'OK  ' if allunsat else 'FAIL'} rc histogram {rc}")
     print("\nPREFLIGHT PASS" if ok else "\nPREFLIGHT FAIL - do not harvest")
     return 0 if ok else 1
