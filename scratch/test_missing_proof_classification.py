@@ -24,30 +24,24 @@ sys.path.insert(0, HERE)
 
 import check_pass  # noqa: E402
 
-# THESE TESTS ARE RED ON PURPOSE, AND THEY ARE THE SPECIFICATION FOR WORK THAT
-# IS STILL OWED. `check_pass` exposes sha256_file, check_one, main and
-# run_batch - there is no `classify` at all, so every test below raises
-# AttributeError rather than failing an assertion.
+# IMPLEMENTED 2026-08-24. These tests were written first and spent a day as
+# `pytest.mark.xfail(strict=True)`, because on Windows a ProcessPoolExecutor
+# respawns its workers by RE-IMPORTING the module from disk, so editing
+# check_pass while a pass is running can split behaviour across workers.
 #
-# That is not a reconstruction defect. The classification refactor was written
-# as tests first and the implementation deliberately deferred, because on
-# Windows a ProcessPoolExecutor respawns its workers by RE-IMPORTING the
-# module, so editing check_pass mid-pass can break a running campaign. On
-# 2026-08-24 it is still mid-campaign and `check_pass` has four live processes,
-# so it is still deferred, for the same reason and not a new one.
+# The deferral was lifted on a MEASUREMENT, not on the calendar. The recorded
+# reason was "check_pass has four live processes"; a process census taken
+# 2026-08-24 19:35 found zero, and no live module imports check_pass either -
+# cube_wave2 imports verdict_io, sample_prune imports check_and_prune, and
+# run_campaign only ever SPAWNS check_pass.py as a subprocess, at phase 3.
+# Phase 1 had ~2.5 days left at the time, so nothing could re-import this file
+# mid-edit. The hazard is real; it just was not present.
 #
-# strict=True is the point. While `classify` is missing these report as xfail
-# and CI stays honest instead of permanently red. The moment somebody
-# implements it they turn into XPASS, which pytest reports as a FAILURE, and
-# whoever did the work has to delete this marker. The marker cannot outlive the
-# gap it describes.
-pytestmark = pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "check_pass.classify is not implemented yet; the refactor is deferred "
-        "until the campaign is between phases, see the module docstring"
-    ),
-)
+# strict=True was the mechanism that made this happen rather than being
+# forgotten: the moment `classify` existed all eleven turned into XPASS, which
+# pytest reports as a FAILURE, and the marker had to be deleted by whoever did
+# the work. Observed doing exactly that before it was removed. A marker that
+# cannot outlive the gap it describes is worth more than a TODO comment.
 
 
 @pytest.fixture
@@ -168,3 +162,100 @@ def test_a_corrupt_transcript_line_does_not_crash_classification(tmp_path):
                  + '{"cube": 99, "ok": tr', encoding="ascii")
     r = {"cube": 1752, "ok": False, "missing_proof": True}
     assert check_pass.classify(r, str(p)) == "skip-already-verified"
+
+
+# ------------------------------------------------- the wiring, end to end ---
+#
+# classify() is worth nothing unless run_batch actually routes through it. A
+# classifier that nothing consulted would leave every test above green and the
+# 01:09 halt completely unfixed - which is the difference between a fix and
+# decoration, so it gets its own coverage rather than an assumption.
+#
+# These drive the REAL pool and the REAL check_one over a genuinely absent
+# proof. check_one returns on the missing file before drat-trim is ever
+# invoked, so they stay hermetic and take about a second.
+#
+# The wave directory is passed ABSOLUTE on purpose. check_one does
+# os.path.join(HERE, wavedir), and inside a pool worker HERE is the live
+# scratch directory; an absolute second argument makes os.path.join discard it.
+# That is what stops this test from building fixtures inside the running
+# campaign - the exact hazard pyproject.toml refuses to collect other scratch
+# tests for.
+
+def _wave(tmp_path):
+    w = tmp_path / "wv"
+    (w / "drat").mkdir(parents=True)
+    (w / "base.cnf").write_text("p cnf 1 1\n1 0\n", encoding="ascii")
+    return w
+
+
+def test_run_batch_does_not_halt_on_a_proof_the_pruner_reclaimed(tmp_path):
+    """THE 01:09 HALT, end to end. CHECK_FAILURES.jsonl halts the campaign and
+    stops the watchdog restarting anything, so the file must not even be
+    created."""
+    w = _wave(tmp_path)
+    trans = w / "transcripts.jsonl"
+    trans.write_text(json.dumps({"cube": 1752, "ok": True,
+                                 "verdict": "s VERIFIED"}) + "\n",
+                     encoding="ascii")
+    fails = w / "CHECK_FAILURES.jsonl"
+    errlog = w / "CHECKER_ERRORS.jsonl"
+    state = {"nfail": 0, "nskip": 0, "abort": False}
+
+    errored = check_pass.run_batch([(str(w), 1752, [1], "deadbeef")], "main",
+                                   1, str(trans), str(fails), str(errlog),
+                                   state)
+
+    assert not fails.exists(), \
+        "a proof the pruner reclaimed must NEVER reach CHECK_FAILURES.jsonl"
+    assert state["nfail"] == 0
+    assert state["nskip"] == 1
+    assert errored == [], "an already-verified cube needs no retry"
+
+
+def test_run_batch_calls_an_unjudgeable_proof_an_environment_fault(tmp_path):
+    """Never verified and no proof on disk: we cannot judge it either way. That
+    is CHECKER_ERRORS and rc 3, which run_campaign reports separately - calling
+    it a failed proof is how a bad afternoon gets mistaken for a result."""
+    w = _wave(tmp_path)
+    trans = w / "transcripts.jsonl"
+    trans.write_text("", encoding="ascii")
+    fails = w / "CHECK_FAILURES.jsonl"
+    errlog = w / "CHECKER_ERRORS.jsonl"
+    state = {"nfail": 0, "nskip": 0, "abort": False}
+
+    job = (str(w), 999, [1], "deadbeef")
+    errored = check_pass.run_batch([job], "main", 1, str(trans), str(fails),
+                                   str(errlog), state)
+
+    assert not fails.exists(), \
+        "an unjudgeable proof is an environment fault, not a failed proof"
+    assert errlog.exists(), "it must be recorded somewhere, not swallowed"
+    assert json.loads(errlog.read_text(encoding="ascii"))["cube"] == 999
+    assert errored == [job], "and handed back for the one retry"
+    assert state["nfail"] == 0
+
+
+def test_run_batch_still_halts_on_a_proof_that_did_not_verify(tmp_path):
+    """The narrow half. A real check failure must still reach CHECK_FAILURES,
+    or the campaign can report success over a bad proof."""
+    w = _wave(tmp_path)
+    trans = w / "transcripts.jsonl"
+    trans.write_text("", encoding="ascii")
+    fails = w / "CHECK_FAILURES.jsonl"
+    errlog = w / "CHECKER_ERRORS.jsonl"
+    state = {"nfail": 0, "nskip": 0, "abort": False}
+
+    # A proof that IS on disk but hashes to nothing like the recorded digest -
+    # check_one reaches the sha comparison and returns a plain failure, with no
+    # missing_proof flag for the classifier to key on.
+    (w / "drat" / "cube_00007.drat").write_text("0\n", encoding="ascii")
+    job = (str(w), 7, [1], "deadbeef")
+    errored = check_pass.run_batch([job], "main", 1, str(trans), str(fails),
+                                   str(errlog), state)
+
+    assert fails.exists(), "a sha mismatch must still halt the campaign"
+    assert "sha mismatch" in fails.read_text(encoding="ascii")
+    assert state["nfail"] == 1
+    assert state["nskip"] == 0
+    assert errored == []

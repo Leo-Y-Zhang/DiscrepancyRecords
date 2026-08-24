@@ -6,6 +6,12 @@ drat-trim, append one transcript line, delete the temporaries (keep the .gz).
 Resumable: cubes already in transcripts.jsonl are skipped. Failures append to
 CHECK_FAILURES.jsonl and never stop the pass unless they exceed 10.
 
+Every result is routed by `classify` (see its docstring), which separates the
+three ways a check can come back not-ok: the mathematics failed, the proof was
+reclaimed after this pass read its job list, or the proof cannot be judged at
+all. Only the first belongs in CHECK_FAILURES.jsonl, because that file halts
+the campaign and tells the operator a proof did not verify.
+
 Usage: check_pass.py <wavedir> <workers>
 """
 import gzip
@@ -56,7 +62,12 @@ def check_one(args):
     gz = os.path.join(w, "drat", f"cube_{i:05d}.drat.gz")
     raw = os.path.join(w, "drat", f"cube_{i:05d}.drat")
     if not os.path.exists(gz) and not os.path.exists(raw):
-        return {"cube": i, "ok": False, "error": "proof missing"}
+        # The explicit flag is what classify() keys on. It exists because the
+        # alternative - matching the words "proof missing" in this free-text
+        # error - would also catch a drat-trim message that happened to contain
+        # them, and the decision it drives is "halt the campaign or not".
+        return {"cube": i, "ok": False, "missing_proof": True,
+                "error": "proof missing"}
     tmp_cnf, tmp_drat = scratch_paths(w, i)
     try:
         with open(base, encoding="ascii") as fh:
@@ -107,6 +118,152 @@ def check_one(args):
         return {"cube": i, "ok": False, "error": repr(e)}
     finally:
         _discard(tmp_cnf, tmp_drat)
+
+
+def _verified_in_transcripts(cube, trans_path):
+    """Is `cube` already recorded as verified in transcripts.jsonl?
+
+    Re-read from disk on EVERY call, deliberately never cached. Caching is the
+    bug: main() builds its job list once at startup, and a proof the pruner
+    reclaims after that read looks exactly like a proof that was never there.
+
+    A torn last line is skipped rather than raised. That file is appended to by
+    fourteen concurrent workers, and a cosmetic write artefact must not be able
+    to take the classifier - and with it the whole pass - down.
+    """
+    try:
+        with open(trans_path, encoding="ascii") as fh:
+            for line in fh:
+                try:
+                    rec = json.loads(line)
+                except Exception:  # noqa: BLE001 - a torn append is not a result
+                    continue
+                if rec.get("cube") == cube and rec.get("ok") is True:
+                    return True
+    except OSError:
+        # No transcripts file means nothing has been verified yet, so a missing
+        # proof here is unjudgeable rather than benign. Erring towards
+        # "checker-error" is the safe direction: it reports an environment
+        # fault instead of silently passing over a cube.
+        return False
+    return False
+
+
+def classify(result, trans_path):
+    """Route one check_one result. Returns exactly one of:
+
+      "transcript"             drat-trim verified the proof; bank the row.
+      "skip-already-verified"  the proof is gone, but this cube is already
+                               verified in transcripts.jsonl - the pruner
+                               reclaimed the disk after the pass started. NOT a
+                               failure, and this is the whole point of the
+                               function: on 2026-08-23 01:09 exactly this case
+                               wrote {"cube": 1752, "error": "proof missing"} to
+                               CHECK_FAILURES.jsonl and halted a four-day
+                               campaign, reporting that the mathematics had
+                               failed. It had not. A MISSING PROOF IS NOT A
+                               FAILED PROOF.
+      "checker-error"          the proof is gone and the cube was never
+                               verified: it cannot be judged at all. That is
+                               CHECKER_ERRORS.jsonl and rc 3, the environment
+                               fault run_campaign reports separately - never
+                               CHECK_FAILURES.
+      "check-failure"          the mathematics. CHECK_FAILURES.jsonl, halt.
+
+    The guard is NARROW on purpose, and half the tests exist to keep it that
+    way. It keys on the explicit `missing_proof` flag check_one sets, and an
+    "s NOT VERIFIED" or a sha mismatch still halts even for a cube that is
+    already in transcripts: being verified once must never launder a bad
+    artefact. A guard that swallowed those would be far worse than the bug.
+    """
+    if result.get("ok"):
+        return "transcript"
+    if result.get("missing_proof") is True:
+        if _verified_in_transcripts(result["cube"], trans_path):
+            return "skip-already-verified"
+        return "checker-error"
+    return "check-failure"
+
+
+def run_batch(batch, label, workers, trans, fails, errlog, state):
+    """Run one batch through the pool and file every result where it belongs.
+    Returns the jobs that must be retried - the ones whose WORKER died, plus
+    the ones classified unjudgeable. A dead worker is an infrastructure fault;
+    only drat-trim's own verdict is a result.
+
+    Module-level rather than a closure inside main() so that a test can drive
+    it. It is the only place `classify` is consulted, so a classifier that
+    nothing routed through would be decoration - and the tests could not have
+    told the difference while this lived inside main().
+    """
+    errored = []
+    t0 = time.time()
+    with ProcessPoolExecutor(max_workers=workers) as ex:
+        futmap = {ex.submit(check_one, j): j for j in batch}
+        for n, fut in enumerate(as_completed(futmap), 1):
+            try:
+                r = fut.result()
+            except Exception as e:  # noqa: BLE001
+                # NOT a CHECK_FAILURES line. That file means "a proof did not
+                # verify": it halts the campaign, stops the watchdog restarting
+                # anything, and raises CAMPAIGN_ATTENTION. A crashed process
+                # recorded there would read as the mathematics failing after
+                # four days of compute.
+                errored.append(futmap[fut])
+                with open(errlog, "a", encoding="ascii", newline="\n") as fh:
+                    fh.write(json.dumps({"cube": futmap[fut][1],
+                                         "phase": label,
+                                         "error": repr(e)}) + "\n")
+                print(f"!! CHECKER ERROR cube {futmap[fut][1]} "
+                      f"(infrastructure, not a proof failure): {e!r}",
+                      flush=True)
+                continue
+            # Classified against transcripts.jsonl AS IT IS NOW, not against
+            # the job list read at startup. The pruner runs alongside this pass
+            # and reclaims proofs it has already recorded, so the file moves
+            # under us by design.
+            kind = classify(r, trans)
+            if kind == "transcript":
+                with open(trans, "a", encoding="ascii", newline="\n") as fh:
+                    fh.write(json.dumps(r) + "\n")
+            elif kind == "skip-already-verified":
+                state["nskip"] += 1
+                print(f"check_pass: cube {r['cube']} has no proof on disk but "
+                      f"is already verified in transcripts.jsonl (the pruner "
+                      f"reclaimed it after this pass started) - skipping, NOT "
+                      f"a failure", flush=True)
+            elif kind == "checker-error":
+                # Unjudgeable, not failed. Same destination as a dead worker:
+                # CHECKER_ERRORS + one retry, and rc 3 if it is still
+                # unjudgeable afterwards.
+                errored.append(futmap[fut])
+                with open(errlog, "a", encoding="ascii", newline="\n") as fh:
+                    fh.write(json.dumps({"cube": r["cube"], "phase": label,
+                                         "error": r.get("error",
+                                                        "proof missing")})
+                             + "\n")
+                print(f"!! CHECKER ERROR cube {r['cube']}: proof missing and "
+                      f"the cube is not in transcripts.jsonl (environment "
+                      f"fault, not a proof failure)", flush=True)
+            else:
+                state["nfail"] += 1
+                with open(fails, "a", encoding="ascii", newline="\n") as fh:
+                    fh.write(json.dumps(r) + "\n")
+                print(f"!! CHECK FAIL cube {r['cube']}: "
+                      f"{r.get('error', r.get('verdict'))}", flush=True)
+                if state["nfail"] > 10:
+                    print("check_pass: >10 failures, aborting", flush=True)
+                    state["abort"] = True
+                    # Drop everything not yet started, or "fail fast" takes as
+                    # long as the longest running proof times fourteen.
+                    ex.shutdown(wait=False, cancel_futures=True)
+                    break
+            if n % 100 == 0 or n == len(batch):
+                el = time.time() - t0
+                print(f"check_pass[{label}]: {n}/{len(batch)} in "
+                      f"{el/3600:.2f}h ({n/max(el,1)*3600:.0f}/h), "
+                      f"{state['nfail']} failed", flush=True)
+    return errored
 
 
 def main():
@@ -174,72 +331,29 @@ def main():
     print(f"check_pass: {len(jobs)} to check, {len(done)} already done",
           flush=True)
     errlog = os.path.join(w, "CHECKER_ERRORS.jsonl")
-    state = {"nfail": 0, "abort": False}
+    state = {"nfail": 0, "nskip": 0, "abort": False}
 
-    def run_batch(batch, label):
-        """Returns the jobs whose WORKER died, for one retry. A dead worker is
-        an infrastructure fault; only drat-trim's own verdict is a result."""
-        errored = []
-        t0 = time.time()
-        with ProcessPoolExecutor(max_workers=workers) as ex:
-            futmap = {ex.submit(check_one, j): j for j in batch}
-            for n, fut in enumerate(as_completed(futmap), 1):
-                try:
-                    r = fut.result()
-                except Exception as e:  # noqa: BLE001
-                    # NOT a CHECK_FAILURES line. That file means "a proof did
-                    # not verify": it halts the campaign, stops the watchdog
-                    # restarting anything, and raises CAMPAIGN_ATTENTION. A
-                    # crashed process recorded there would read as the
-                    # mathematics failing after four days of compute.
-                    errored.append(futmap[fut])
-                    with open(errlog, "a", encoding="ascii",
-                              newline="\n") as fh:
-                        fh.write(json.dumps({"cube": futmap[fut][1],
-                                             "phase": label,
-                                             "error": repr(e)}) + "\n")
-                    print(f"!! CHECKER ERROR cube {futmap[fut][1]} "
-                          f"(infrastructure, not a proof failure): {e!r}",
-                          flush=True)
-                    continue
-                if r["ok"]:
-                    with open(trans, "a", encoding="ascii",
-                              newline="\n") as fh:
-                        fh.write(json.dumps(r) + "\n")
-                else:
-                    state["nfail"] += 1
-                    with open(fails, "a", encoding="ascii",
-                              newline="\n") as fh:
-                        fh.write(json.dumps(r) + "\n")
-                    print(f"!! CHECK FAIL cube {r['cube']}: "
-                          f"{r.get('error', r.get('verdict'))}", flush=True)
-                    if state["nfail"] > 10:
-                        print("check_pass: >10 failures, aborting", flush=True)
-                        state["abort"] = True
-                        # Drop everything not yet started, or "fail fast" takes
-                        # as long as the longest running proof times fourteen.
-                        ex.shutdown(wait=False, cancel_futures=True)
-                        break
-                if n % 100 == 0 or n == len(batch):
-                    el = time.time() - t0
-                    print(f"check_pass[{label}]: {n}/{len(batch)} in "
-                          f"{el/3600:.2f}h ({n/max(el,1)*3600:.0f}/h), "
-                          f"{state['nfail']} failed", flush=True)
-        return errored
-
-    errored = run_batch(jobs, "main")
+    errored = run_batch(jobs, "main", workers, trans, fails, errlog,
+                        state)
     if state["abort"]:
         return 2
     if errored:
         print(f"check_pass: retrying {len(errored)} cube(s) whose worker died",
               flush=True)
-        errored = run_batch(errored, "retry")
+        errored = run_batch(errored, "retry", workers, trans, fails,
+                            errlog, state)
         if state["abort"]:
             return 2
 
     nfail = state["nfail"]
-    print(f"CHECK PASS DONE: {len(jobs) - nfail - len(errored)} verified, "
-          f"{nfail} failed, {len(errored)} unchecked after a retry",
+    nskip = state["nskip"]
+    # A skipped cube is NOT one this pass verified, so it comes out of the
+    # verified count rather than being quietly folded into it. Reporting it as
+    # verified would be the same class of error as the bug this classification
+    # exists to fix, pointed the other way.
+    print(f"CHECK PASS DONE: {len(jobs) - nfail - nskip - len(errored)} "
+          f"verified, {nfail} failed, {nskip} skipped (already verified, proof "
+          f"since reclaimed), {len(errored)} unchecked after a retry",
           flush=True)
     if errored:
         # Returning 0 here would let the campaign proceed as though every
