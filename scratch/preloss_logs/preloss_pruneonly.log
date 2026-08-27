@@ -2021,23 +2021,23 @@ sample-pruner: freed 0.20 GB, 13335 pruned, 61 checked
 sample-pruner: freed 0.45 GB, 13339 pruned, 61 checked
 sample-pruner: sample of 1600 of 16384; 208 checked, 13339 pruned so far
 Traceback (most recent call last):
-  File "C:\dev\DiscrepancyRecords\scratch\sample_prune.py", line 238, in <module>
+  File "scratch\sample_prune.py", line 238, in <module>
     raise SystemExit(main())
                      ~~~~^^
-  File "C:\dev\DiscrepancyRecords\scratch\sample_prune.py", line 124, in main
+  File "scratch\sample_prune.py", line 124, in main
     v = json.load(fh)
-  File "C:\Users\lambe\AppData\Local\Programs\Python\Python313\Lib\json\__init__.py", line 298, in load
+  File "<python>\Lib\json\__init__.py", line 298, in load
     return loads(fp.read(),
         cls=cls, object_hook=object_hook,
         parse_float=parse_float, parse_int=parse_int,
         parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)
-  File "C:\Users\lambe\AppData\Local\Programs\Python\Python313\Lib\json\__init__.py", line 352, in loads
+  File "<python>\Lib\json\__init__.py", line 352, in loads
     return _default_decoder.decode(s)
            ~~~~~~~~~~~~~~~~~~~~~~~^^^
-  File "C:\Users\lambe\AppData\Local\Programs\Python\Python313\Lib\json\decoder.py", line 345, in decode
+  File "<python>\Lib\json\decoder.py", line 345, in decode
     obj, end = self.raw_decode(s, idx=_w(s, 0).end())
                ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\lambe\AppData\Local\Programs\Python\Python313\Lib\json\decoder.py", line 363, in raw_decode
+  File "<python>\Lib\json\decoder.py", line 363, in raw_decode
     raise JSONDecodeError("Expecting value", s, err.value) from None
 json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
 sample-pruner: sample of 1600 of 16384; 208 checked, 13340 pruned so far
@@ -2280,6 +2280,6 @@ sample-pruner: freed 1.09 GB, 14762 pruned, 209 checked
 sample-pruner: freed 0.75 GB, 14767 pruned, 209 checked
 sample-pruner: freed 0.02 GB, 14767 pruned, 209 checked
 Traceback (most recent call last):
-  File "C:\dev\DiscrepancyRecords\scratch\sample_prune.py", line 239, in <module>
-  File "C:\dev\DiscrepancyRecords\scratch\sample_prune.py", line 106, in main
+  File "scratch\sample_prune.py", line 239, in <module>
+  File "scratch\sample_prune.py", line 106, in main
 FileNotFoundError: [WinError 3] The system cannot find the path specified: 'C:\\dev\\DiscrepancyRecords\\scratch\\wave274tot\\PRUNER_RUNNING_prune'

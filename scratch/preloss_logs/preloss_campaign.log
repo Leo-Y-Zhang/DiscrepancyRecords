@@ -1,5 +1,5 @@
 [2026-08-19 18:03:28] === campaign orchestrator starting ===
-[2026-08-19 18:03:28] start totalizer-wave: C:\Users\lambe\AppData\Local\Programs\Python\Python313\python.exe C:\dev\DiscrepancyRecords\scratch\cube_wave2.py wave wave274tot 16 2400
+[2026-08-19 18:03:28] start totalizer-wave: python.exe scratch\cube_wave2.py wave wave274tot 16 2400
 50/16384 in 0.00h | UNSAT 50 SAT 0 UNK 0 | 200370/h | ~0.1h left
 100/16384 in 0.00h | UNSAT 100 SAT 0 UNK 0 | 397755/h | ~0.0h left
 150/16384 in 0.00h | UNSAT 150 SAT 0 UNK 0 | 591423/h | ~0.0h left
@@ -32,7 +32,7 @@
 1500/16384 in 4.47h | UNSAT 1500 SAT 0 UNK 0 | 335/h | ~44.4h left
 1550/16384 in 4.70h | UNSAT 1549 SAT 0 UNK 1 | 330/h | ~45.0h left
 ^C[2026-08-19 22:57:07] === campaign orchestrator starting ===
-[2026-08-19 22:57:07] start totalizer-wave: C:\Users\lambe\AppData\Local\Programs\Python\Python313\python.exe C:\dev\DiscrepancyRecords\scratch\cube_wave2.py wave wave274tot 16 2400
+[2026-08-19 22:57:07] start totalizer-wave: python.exe scratch\cube_wave2.py wave wave274tot 16 2400
 50/16384 in 0.00h | UNSAT 50 SAT 0 UNK 0 | 365767/h | ~0.0h left
 100/16384 in 0.00h | UNSAT 100 SAT 0 UNK 0 | 695161/h | ~0.0h left
 150/16384 in 0.00h | UNSAT 150 SAT 0 UNK 0 | 1030673/h | ~0.0h left
@@ -78,7 +78,7 @@
 2150/16384 in 3.74h | UNSAT 2150 SAT 0 UNK 0 | 576/h | ~24.7h left
 2200/16384 in 4.06h | UNSAT 2200 SAT 0 UNK 0 | 542/h | ~26.2h left
 ^C[2026-08-20 03:11:04] === campaign orchestrator starting ===
-[2026-08-20 03:11:04] start totalizer-wave: C:\Users\lambe\AppData\Local\Programs\Python\Python313\python.exe C:\dev\DiscrepancyRecords\scratch\cube_wave2.py wave wave274tot 16 2400
+[2026-08-20 03:11:04] start totalizer-wave: python.exe scratch\cube_wave2.py wave wave274tot 16 2400
 50/16384 in 0.00h | UNSAT 50 SAT 0 UNK 0 | 385007/h | ~0.0h left
 100/16384 in 0.00h | UNSAT 100 SAT 0 UNK 0 | 506173/h | ~0.0h left
 150/16384 in 0.00h | UNSAT 150 SAT 0 UNK 0 | 749491/h | ~0.0h left
@@ -184,7 +184,7 @@
 5150/16384 in 14.48h | UNSAT 5150 SAT 0 UNK 0 | 356/h | ~31.6h left
 5200/16384 in 14.73h | UNSAT 5200 SAT 0 UNK 0 | 353/h | ~31.7h left
 ^C[2026-08-20 17:56:12] === campaign orchestrator starting ===
-[2026-08-20 17:56:14] start totalizer-wave: C:\Users\lambe\AppData\Local\Programs\Python\Python313\python.exe C:\dev\DiscrepancyRecords\scratch\cube_wave2.py wave wave274tot 16 2400
+[2026-08-20 17:56:14] start totalizer-wave: python.exe scratch\cube_wave2.py wave wave274tot 16 2400
 50/16384 in 0.00h | UNSAT 50 SAT 0 UNK 0 | 287155/h | ~0.1h left
 100/16384 in 0.00h | UNSAT 100 SAT 0 UNK 0 | 312011/h | ~0.1h left
 150/16384 in 0.00h | UNSAT 150 SAT 0 UNK 0 | 463370/h | ~0.0h left
@@ -296,7 +296,7 @@
 5450/16384 in 1.14h | UNSAT 5450 SAT 0 UNK 0 | 4774/h | ~2.3h left
 5500/16384 in 1.31h | UNSAT 5500 SAT 0 UNK 0 | 4203/h | ~2.6h left
 ^C[2026-08-20 19:18:33] === campaign orchestrator starting ===
-[2026-08-20 19:18:34] start totalizer-wave: C:\Users\lambe\AppData\Local\Programs\Python\Python313\python.exe C:\dev\DiscrepancyRecords\scratch\cube_wave2.py wave wave274tot 16 2400
+[2026-08-20 19:18:34] start totalizer-wave: python.exe scratch\cube_wave2.py wave wave274tot 16 2400
 50/16384 in 0.00h | UNSAT 50 SAT 0 UNK 0 | 368737/h | ~0.0h left
 100/16384 in 0.00h | UNSAT 100 SAT 0 UNK 0 | 737236/h | ~0.0h left
 150/16384 in 0.00h | UNSAT 150 SAT 0 UNK 0 | 672441/h | ~0.0h left
@@ -408,54 +408,54 @@
 5450/16384 in 0.00h | UNSAT 5450 SAT 0 UNK 0 | 12419045/h | ~0.0h left
 5500/16384 in 0.00h | UNSAT 5500 SAT 0 UNK 0 | 12493412/h | ~0.0h left
 [2026-08-20 19:33:09] === campaign orchestrator starting ===
-[2026-08-20 19:33:09] start totalizer-wave: C:\Users\lambe\AppData\Local\Programs\Python\Python313\python.exe C:\dev\DiscrepancyRecords\scratch\cube_wave2.py wave wave274tot 16 2400
+[2026-08-20 19:33:09] start totalizer-wave: python.exe scratch\cube_wave2.py wave wave274tot 16 2400
 [2026-08-20 20:10:05] end totalizer-wave: rc=3221225786
 [2026-08-20 20:10:06] totalizer-wave verdicts: UNSAT=5759 SAT=0 other=8
 [2026-08-20 20:10:07] retry round 1: 8 unresolved cubes at 7200s
-[2026-08-20 20:10:07] start totalizer-retry-1: C:\Users\lambe\AppData\Local\Programs\Python\Python313\python.exe C:\dev\DiscrepancyRecords\scratch\cube_wave2.py wave wave274tot 8 7200
+[2026-08-20 20:10:07] start totalizer-retry-1: python.exe scratch\cube_wave2.py wave wave274tot 8 7200
 [2026-08-20 20:10:18] end totalizer-retry-1: rc=3221225786
 [2026-08-20 20:10:19] totalizer-retry-1 verdicts: UNSAT=5759 SAT=0 other=14
 [2026-08-20 20:10:20] retry round 2: 14 unresolved cubes at 7200s
-[2026-08-20 20:10:20] start totalizer-retry-2: C:\Users\lambe\AppData\Local\Programs\Python\Python313\python.exe C:\dev\DiscrepancyRecords\scratch\cube_wave2.py wave wave274tot 8 7200
+[2026-08-20 20:10:20] start totalizer-retry-2: python.exe scratch\cube_wave2.py wave wave274tot 8 7200
 [2026-08-20 20:10:23] end totalizer-retry-2: rc=3221225786
 [2026-08-20 20:10:24] totalizer-retry-2 verdicts: UNSAT=5759 SAT=0 other=15
 [2026-08-20 20:10:24] totalizer-final verdicts: UNSAT=5759 SAT=0 other=15
 [2026-08-20 20:10:24] HALT: only 5759/16384 UNSAT after retries - hard cubes remain; a session must decide the budget
 [2026-08-20 20:13:06] === campaign orchestrator starting ===
-[2026-08-20 20:13:07] start totalizer-wave: C:\Users\lambe\AppData\Local\Programs\Python\Python313\python.exe C:\dev\DiscrepancyRecords\scratch\cube_wave2.py wave wave274tot 16 2400
+[2026-08-20 20:13:07] start totalizer-wave: python.exe scratch\cube_wave2.py wave wave274tot 16 2400
 [2026-08-20 22:10:20] === campaign orchestrator starting ===
-[2026-08-20 22:10:20] start totalizer-wave: C:\Users\lambe\AppData\Local\Programs\Python\Python313\python.exe C:\dev\DiscrepancyRecords\scratch\cube_wave2.py wave wave274tot 16 2400
+[2026-08-20 22:10:20] start totalizer-wave: python.exe scratch\cube_wave2.py wave wave274tot 16 2400
 [2026-08-22 17:03:21] === campaign orchestrator starting ===
 Traceback (most recent call last):
-  File "C:\dev\DiscrepancyRecords\scratch\run_campaign.py", line 224, in <module>
+  File "scratch\run_campaign.py", line 224, in <module>
     raise SystemExit(main())
                      ~~~~^^
-  File "C:\dev\DiscrepancyRecords\scratch\run_campaign.py", line 122, in main
+  File "scratch\run_campaign.py", line 122, in main
     c = counts("wave274tot")
-  File "C:\dev\DiscrepancyRecords\scratch\run_campaign.py", line 89, in counts
+  File "scratch\run_campaign.py", line 89, in counts
     v = json.load(open(os.path.join(verd, f), encoding="ascii"))
-  File "C:\Users\lambe\AppData\Local\Programs\Python\Python313\Lib\json\__init__.py", line 298, in load
+  File "<python>\Lib\json\__init__.py", line 298, in load
     return loads(fp.read(),
         cls=cls, object_hook=object_hook,
         parse_float=parse_float, parse_int=parse_int,
         parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)
-  File "C:\Users\lambe\AppData\Local\Programs\Python\Python313\Lib\json\__init__.py", line 352, in loads
+  File "<python>\Lib\json\__init__.py", line 352, in loads
     return _default_decoder.decode(s)
            ~~~~~~~~~~~~~~~~~~~~~~~^^^
-  File "C:\Users\lambe\AppData\Local\Programs\Python\Python313\Lib\json\decoder.py", line 345, in decode
+  File "<python>\Lib\json\decoder.py", line 345, in decode
     obj, end = self.raw_decode(s, idx=_w(s, 0).end())
                ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\lambe\AppData\Local\Programs\Python\Python313\Lib\json\decoder.py", line 363, in raw_decode
+  File "<python>\Lib\json\decoder.py", line 363, in raw_decode
     raise JSONDecodeError("Expecting value", s, err.value) from None
 json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
 [2026-08-22 17:06:38] === campaign orchestrator starting ===
-[2026-08-22 17:06:39] start totalizer-wave: C:\Users\lambe\AppData\Local\Programs\Python\Python313\python.exe C:\dev\DiscrepancyRecords\scratch\cube_wave2.py wave wave274tot 16 2400
+[2026-08-22 17:06:39] start totalizer-wave: python.exe scratch\cube_wave2.py wave wave274tot 16 2400
 [2026-08-22 17:40:26] === campaign orchestrator starting ===
-[2026-08-22 17:40:28] start totalizer-wave: C:\Users\lambe\AppData\Local\Programs\Python\Python313\python.exe C:\dev\DiscrepancyRecords\scratch\cube_wave2.py wave wave274tot 16 2400
+[2026-08-22 17:40:28] start totalizer-wave: python.exe scratch\cube_wave2.py wave wave274tot 16 2400
 [2026-08-23 01:02:53] end totalizer-wave: rc=0
 [2026-08-23 01:02:54] totalizer-wave verdicts: UNSAT=16384 SAT=0 other=0
 [2026-08-23 01:02:56] totalizer-final verdicts: UNSAT=16384 SAT=0 other=0
 [2026-08-23 01:02:56] PHASE 1+2 COMPLETE: all 16384 totalizer cubes UNSAT
-[2026-08-23 01:02:56] start drat-check-pass: C:\Users\lambe\AppData\Local\Programs\Python\Python313\python.exe C:\dev\DiscrepancyRecords\scratch\check_pass.py wave274tot 14
+[2026-08-23 01:02:56] start drat-check-pass: python.exe scratch\check_pass.py wave274tot 14
 [2026-08-24 02:13:33] end drat-check-pass: rc=1
 [2026-08-24 02:13:33] HALT: check pass reported failures - do NOT proceed
