@@ -43,21 +43,10 @@ select = ["E", "F", "W", "I", "B", "UP"]
 # relaxed.
 ignore = ["E741"]
 
-[tool.ruff.lint.per-file-ignores]
-# DEFERRED, NOT FORGIVEN - remove this the moment the campaign finishes.
-#
-# `scratch/cube_wave2.py` has one UP031 (percent-format at line 76). The fix is
-# a one-line rewrite to an f-string and it is not being applied yet, because on
-# 2026-08-24 that file is RUNNING: `cube_wave2.py wave wave274tot 16 2400`, with
-# a `ProcessPoolExecutor` whose workers Windows spawns by RE-IMPORTING the
-# module from disk. Editing it mid-wave is the one documented way to break a run
-# that is already 5,400+ verdicts deep and stands in for several days of
-# compute, and the campaign is recomputing evidence that was destroyed once
-# already.
-#
-# Silencing the whole file, or the whole rule, would have been the easy version
-# of this and would have hidden the next real finding. This is one rule in one
-# file, and it is a TODO with an owner: when the wave is done, delete this
-# block and run `ruff check .` - it must come back clean with nothing else
-# needing changes.
-"scratch/cube_wave2.py" = ["UP031"]
+# The `scratch/cube_wave2.py` UP031 deferral was PAID OFF on 2026-08-28, the day
+# the campaign finished. Its condition was that the module was being re-imported
+# by live pool workers; a process census at the time showed 0 kissat and no wave
+# driver, so the edit was finally safe. The percent-format at line 76 is now an
+# f-string and the emitted `cube_construction` string is byte-identical, so no
+# manifest text or recorded hash moves. `ruff check .` is clean with no
+# per-file-ignores at all.

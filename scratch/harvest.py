@@ -61,12 +61,19 @@ def build_claim():
         "drat": None,
         "wave": {
             "manifest": "evidence/waves/wave274tot/manifest.json",
-            "verdicts_dir": "evidence/waves/wave274tot/verdicts",
+            # .jsonl, NOT a bare directory: tools/import_wave.py consolidates the
+            # verdicts into one verdicts.jsonl, and gate/verify_all.py picks the
+            # reader off the RECORDED NAME, not off what is on disk (its own
+            # words: "a directory that has been given a .jsonl name is refused
+            # rather than quietly accepted"). The directory form this template
+            # used to declare is what a from-scratch wave leaves behind, and it
+            # made W3 fail with "is not a directory" against a correct import.
+            "verdicts_dir": "evidence/waves/wave274tot/verdicts.jsonl",
             "transcripts": None,
             "confirm": {
                 "kind": "wave",
                 "manifest": "evidence/waves/wave274/manifest.json",
-                "verdicts_dir": "evidence/waves/wave274/verdicts",
+                "verdicts_dir": "evidence/waves/wave274/verdicts.jsonl",
                 "transcripts": None,
             },
         },
@@ -79,7 +86,13 @@ def build_claim():
             "upper bound for k = 17 has been published to our knowledge."
         ),
         "notes": (
-            "REPLACE: solver identity, machine, dates. Upper side: every one of "
+            "Solver kissat 4.0.1, invoked as `kissat -q <cube.cnf>`, on one "
+            "16-core x86-64 laptop (Intel Core Ultra 7 255H) running Windows "
+            "11, with 14 to 16 cubes solved concurrently. The totalizer wave "
+            "ran 2026-08-24 to 2026-08-26 and the seqcount wave 2026-08-26 to "
+            "2026-08-28; four seqcount cubes exceeded a 3600 s cap on the "
+            "first pass and were re-solved to UNSAT at a 7200 s cap. Upper "
+            "side: every one of "
             "the 16384 totalizer cubes at N = 274 returned UNSAT, and the 4096 "
             "seqcount cubes of the confirming wave did likewise - two different "
             "encodings of the same question, which is what W6 requires and what "

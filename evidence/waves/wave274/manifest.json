@@ -1,0 +1,31 @@
+{
+ "schema": "cube-wave.v2",
+ "N": 274,
+ "k": 17,
+ "l": 2,
+ "encoder": "seqcount",
+ "symmetry_break": true,
+ "snapshot_commit": "54ca57814f25daf06a644efdea9ac4ec6a431c5c",
+ "base": {
+  "n_vars": 636754,
+  "n_clauses": 1303901,
+  "sha256": "9ad0c62e5225e27d40ac98d6ef7154718abf354d22c28a76167db7dfefc24e52"
+ },
+ "split_vars": [
+  129,
+  130,
+  131,
+  133,
+  134,
+  136,
+  137,
+  138,
+  139,
+  141,
+  145,
+  146
+ ],
+ "n_cubes": 4096,
+ "cubes_sha256": "d17be007a489a35d1199c25a483dc941ab2dcf5407edded23a430508f9d7ec87",
+ "cube_construction": "mask-lsb-first.v1"
+}

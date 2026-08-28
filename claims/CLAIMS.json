@@ -52,6 +52,33 @@
       "evidence_level": "witness",
       "prior_art": "Improves on N(17,2) >= 273 (T. A. Lystad, Zenodo DOI 10.5281/zenodo.21840279, periodic witness at N = 272). To our knowledge no witness at N = 273 has been published: 273 = 16*17 + 1 is exactly where the periodic construction dies, since the AP 1, 18, ..., 273 with d = 17 meets a single residue class mod 17.",
       "notes": "First found by kissat 4.0.1 on the seqcounter avoidance instance at N = 273 (solved without search - zero conflicts), 2026-08-19, then re-checked by nk2/evaluator.py: every one of the 2193 seventeen-term APs in {1..273} has |sum| = 1. The coloring is non-periodic with 136 positions colored +1. No upper bound is claimed yet; a cube-and-conquer campaign at N = 274 is in progress."
+    },
+    {
+      "id": "N17_2_exact_274",
+      "k": 17,
+      "l": 2,
+      "kind": "exact",
+      "value": 274,
+      "witness": {
+        "path": "evidence/witnesses/k17_l2_N273.txt",
+        "sha256": "b12629196a74c6819602f89479023935e004942a298ae3ae94483015062f9a5a"
+      },
+      "unsat_runs": [],
+      "drat": null,
+      "wave": {
+        "manifest": "evidence/waves/wave274tot/manifest.json",
+        "verdicts_dir": "evidence/waves/wave274tot/verdicts.jsonl",
+        "transcripts": null,
+        "confirm": {
+          "kind": "wave",
+          "manifest": "evidence/waves/wave274/manifest.json",
+          "verdicts_dir": "evidence/waves/wave274/verdicts.jsonl",
+          "transcripts": null
+        }
+      },
+      "evidence_level": "unsat-dual",
+      "prior_art": "a(17) of OEIS A398541 is open; the published lower bound is N(17,2) >= 273 (T. A. Lystad, Zenodo DOI 10.5281/zenodo.21840279, periodic witness at N = 272). The lower side here, a witness at N = 273, is claimed by this repository as N17_2_lower_274. No upper bound for k = 17 has been published to our knowledge.",
+      "notes": "Solver kissat 4.0.1, invoked as `kissat -q <cube.cnf>`, on one 16-core x86-64 laptop (Intel Core Ultra 7 255H) running Windows 11, with 14 to 16 cubes solved concurrently. The totalizer wave ran 2026-08-24 to 2026-08-26 and the seqcount wave 2026-08-26 to 2026-08-28; four seqcount cubes exceeded a 3600 s cap on the first pass and were re-solved to UNSAT at a 7200 s cap. Upper side: every one of the 16384 totalizer cubes at N = 274 returned UNSAT, and the 4096 seqcount cubes of the confirming wave did likewise - two different encodings of the same question, which is what W6 requires and what carries this to unsat-dual. Both waves ran the driver's --no-proof mode, so no verdict carries a proof digest and transcripts are null on both sides; per docs/TDD.md that is the honest shape for a wave whose worth rests on encoder diversity rather than proof volume, and wave-drat-verified sorts below unsat-dual regardless. The cube sets are reproducible: base.cnf and cubes.txt of each wave hash to the values recorded in its manifest, regenerable from snapshot_commit 54ca57814f25daf06a644efdea9ac4ec6a431c5c."
     }
   ]
 }

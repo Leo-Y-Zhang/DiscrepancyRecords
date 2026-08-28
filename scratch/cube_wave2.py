@@ -73,8 +73,8 @@ def gen(encoder, nsplit, wavedir):
             "base": {k2: info[k2] for k2 in ("n_vars", "n_clauses", "sha256")},
             "split_vars": split, "n_cubes": 1 << nsplit,
             "cubes_sha256": sha256_file(cubes),
-            "cube_construction": "all 2^%d sign patterns of split_vars, "
-                                 "mask bit i -> sign of split_vars[i]" % nsplit}
+            "cube_construction": f"all 2^{nsplit} sign patterns of split_vars, "
+                                 "mask bit i -> sign of split_vars[i]"}
     with open(os.path.join(w, "manifest.json"), "w", encoding="ascii",
               newline="\n") as fh:
         json.dump(meta, fh, indent=1)
