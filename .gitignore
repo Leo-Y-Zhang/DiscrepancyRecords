@@ -57,6 +57,13 @@ scratch/*.pid.error
 scratch/__pycache__/
 scratch/*.jsonl
 
+# The watchdog's desktop notice. It is machine-local run state in the same way
+# the logs and pid files above are - the watchdog writes it and opens it in
+# Notepad to get the operator's attention, and on 2026-08-28 it carried the
+# GOOD news ("this is the good one"). DONE.json is the durable record of the
+# same event and IS committed; this is the transient copy addressed to a human.
+scratch/CAMPAIGN_ATTENTION.txt
+
 # Python
 __pycache__/
 *.py[cod]
