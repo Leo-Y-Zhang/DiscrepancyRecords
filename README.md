@@ -168,4 +168,4 @@ the published description - nine `+1` then eight `-1`, period 17, tiled 16 times
 
 ## License
 
-Proprietary source-available — see [LICENSE](LICENSE). You may read it, run it, and publish what you find, including a refutation. No reuse, modification, redistribution, or use as machine-learning training data. Author: Leo Y. Zhang.
+Proprietary source-available - see [LICENSE](LICENSE). You may read it, run it, and publish what you find, including a refutation. No reuse, modification, redistribution, or use as machine-learning training data. Author: Leo Y. Zhang.
