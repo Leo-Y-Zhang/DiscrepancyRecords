@@ -1489,6 +1489,69 @@ def warn_unreferenced(root: Path, claims: list[dict], report: Report) -> None:
         report.warn(f"artifact {rel} is referenced by no claim")
 
 
+# --- self-check --------------------------------------------------------------
+#
+# G2's call to nk2.evaluator.avoids() is the only thing standing between a
+# lower-bound or exact claim and a coloring that does not actually avoid
+# (k, l). If that call were gutted -- avoids() returning True unconditionally,
+# say -- every rule above would stay green against the claims currently
+# committed, because none of THEM is wrong; nothing here re-derives a claim's
+# arithmetic a second, independent way the way G3's two encoders re-derive an
+# UNSAT instance. tests/fixtures/g2_flipped_sign exists for exactly this: one
+# witness position flipped, its sha256 updated to match, so only the
+# re-evaluation itself -- not the length check, not the hash check -- can
+# catch it (see the fixture's own claims/CLAIMS.json "notes" field). The
+# pytest suite already runs it as tests/test_gate.py::test_bad_fixture_is_
+# refused[g2_flipped_sign]; this makes `python gate/verify_all.py` alone
+# demand the same thing, with no test runner required.
+SELF_CHECK_FIXTURE = (
+    Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "g2_flipped_sign"
+)
+
+
+def self_check(report: Report) -> None:
+    """Confirm avoids() itself still refuses a witness engineered to violate it.
+
+    Independent of ``--root``: this always reads the fixture out of the
+    checkout the gate itself lives in, so a run against someone else's
+    ``--root`` is not exempt from it. It calls ``avoids()`` directly rather
+    than going through ``rule_g2`` -- ``Report.fail`` prints unconditionally,
+    on any ``Report`` instance, so routing this through ``rule_g2`` would print
+    a spurious "FAIL G2 N3_2_exact_9" line that could be mistaken for a failure
+    of the real claim of that id in ``claims/CLAIMS.json``.
+    """
+    claims_path = SELF_CHECK_FIXTURE / "claims" / "CLAIMS.json"
+    if not claims_path.is_file():
+        report.fail(
+            "SELFTEST", "g2_flipped_sign",
+            f"{claims_path} is missing; the gate cannot confirm avoids() still "
+            "rejects a tampered coloring",
+        )
+        return
+    try:
+        claim = load_json(claims_path)["claims"][0]
+        witness = claim["witness"]
+        path = SELF_CHECK_FIXTURE / witness["path"]
+        coloring, _ = read_witness(path)
+    except (ValueError, UnicodeDecodeError, KeyError, IndexError, TypeError,
+            WitnessFormatError, OSError) as exc:
+        report.fail("SELFTEST", "g2_flipped_sign", f"fixture will not load: {exc}")
+        return
+
+    if avoids(coloring, claim["k"], claim["l"]):
+        report.fail(
+            "SELFTEST", "g2_flipped_sign",
+            "avoids() accepted tests/fixtures/g2_flipped_sign's witness, which is "
+            "engineered to violate (k, l)-avoidance; the witness re-evaluation "
+            "G2 relies on is not being enforced",
+        )
+    else:
+        report.info(
+            "self-check: avoids() still rejects tests/fixtures/g2_flipped_sign "
+            "(a witness that does not avoid (k, l))"
+        )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python gate/verify_all.py",
@@ -1587,6 +1650,7 @@ def main(argv: list[str] | None = None) -> int:
 
     rule_g6(root, report)
     warn_unreferenced(root, claims, report)
+    self_check(report)
 
     if report.failures:
         print(f"\n{report.failures} failure(s); this repository asserts nothing.")
