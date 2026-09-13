@@ -312,6 +312,18 @@ a floor on strength, so understating it is INFO and overstating it fails. There
 is no wave-reverified tier - `--reverify-drat` over a wave is a check that can
 fail, not a promotion.
 
+**SELFTEST.** None of G1-G7 or W1-W6 above is exercised twice by a different
+route, so a broken `nk2.evaluator.avoids()` - the one function no rule
+re-derives independently, unlike G3's two encoders - would stay invisible
+against the claims currently committed if it always returned `True`: none of
+them is wrong, so nothing would look different. Every run of the gate also
+calls `avoids()` directly against `tests/fixtures/g2_flipped_sign`'s witness, a
+coloring with one position flipped so it no longer avoids `(k=3, l=2)` (see
+that fixture's own `claims/CLAIMS.json` "notes" field). This is independent of
+`--root`: it always reads out of the checkout the gate itself lives in. A
+`SELFTEST` failure means avoids() itself is not being enforced, not that a
+committed claim is wrong.
+
 **Path rule, shared by G2, G3, G4 and W1-W4.** Every path recorded in a claim,
 a transcript or a wave block is resolved with a containment check, never by
 joining it to the root. It must be a plain repo-relative path (no drive letter,
