@@ -3,13 +3,20 @@
 A SAT-based campaign against `N(k,2)` - Erdos problem #176, OEIS A398541 - with
 a cold verification gate that has to pass before this repo asserts anything.
 
-**Status: campaign in progress. No new term is claimed.** Three claims are on
-record: `N(3,2) = 9`, which is published; the published lower bound
-`N(17,2) >= 273`, credited to its author below; and `N(17,2) >= 274`, which
-rests on an avoiding coloring of `{1..273}` found here and re-checked by this
-repository's own evaluator. No upper bound on `N(17,2)` is claimed at all. This
-README will say otherwise only when `gate/verify_all.py` exits 0 on a claim that
-says otherwise.
+**Status: `N(17,2) = 274` is on record at evidence level `unsat-dual`; nothing is
+claimed at a DRAT-checked level yet.** Four claims are in `claims/CLAIMS.json`:
+`N(3,2) = 9`, which is published; the published lower bound `N(17,2) >= 273`,
+credited to its author below; `N(17,2) >= 274`, which rests on an avoiding
+coloring of `{1..273}` found here and re-checked by this repository's own
+evaluator; and `N(17,2) = 274`, whose upper side rests on two complete cube
+waves at `N = 274` built from structurally different encoders (totalizer,
+16,384 cubes; sequential counter, 4,096 cubes), every cube reported UNSAT by
+kissat. The gate regenerates both waves' base instances and cube sets from the
+encoders in this repository and re-evaluates the witness, but it takes the
+solver's word for each cube: no DRAT proofs were recorded for these waves, so
+the claim sits below `drat-transcript` in the evidence ladder defined in `gate/verify_all.py` and is not yet
+proof-checked. This README will say more only when `gate/verify_all.py` exits 0
+on a claim that says more.
 
 ## The quantity
 
