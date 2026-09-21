@@ -1,0 +1,33 @@
+cff-version: 1.2.0
+message: "If you use this software, or cite the values it establishes, please cite the archived version below."
+title: "DiscrepancyRecords: a SAT campaign on the discrepancy-2 thresholds N(k,2)"
+abstract: >-
+  A SAT-based campaign on N(k,2), the least N such that every plus-minus-one
+  coloring of {1..N} has an arithmetic progression with partial sum of absolute
+  value at least 2 (Erdos problem #176, OEIS A398541). Lower bounds are avoiding
+  colorings checkable without a solver; upper bounds must come from two
+  structurally different encodings.
+type: software
+authors:
+  - family-names: Zhang
+    given-names: Leo Y.
+    orcid: "https://orcid.org/0009-0008-1145-7969"
+repository-code: "https://github.com/Leo-Y-Zhang/DiscrepancyRecords"
+license-url: "https://github.com/Leo-Y-Zhang/DiscrepancyRecords/blob/main/LICENSE"
+# Fill these three in from the Zenodo record created by the first release, then
+# commit. Until they are set this file says who wrote the software and where it
+# lives, which is true, but gives nobody a citable, permanent address -- and the
+# permanent address is the entire reason the OEIS link points at Zenodo and not
+# at a GitHub URL that one rename would break.
+# version: "1.0.0"
+# date-released: "2026-09-21"
+# doi: 10.5281/zenodo.XXXXXXXX
+# url: "https://doi.org/10.5281/zenodo.XXXXXXXX"
+keywords:
+  - discrepancy
+  - arithmetic progression
+  - Erdos problem 176
+  - SAT solving
+  - certificate
+  - OEIS
+  - A398541

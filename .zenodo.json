@@ -1,0 +1,34 @@
+{
+ "upload_type": "software",
+ "title": "DiscrepancyRecords: a SAT campaign on the discrepancy-2 thresholds N(k,2)",
+ "description": "A SAT-based campaign on N(k,2), the least N such that every plus-minus-one coloring of {1..N} has an arithmetic progression with partial sum of absolute value at least 2 (Erdos problem #176, OEIS A398541). Lower bounds are avoiding colorings checkable without a solver; upper bounds are refutations required to come from two structurally different encodings. Includes the cold verification gate that regenerates every claimed instance and compares hashes before the repository is allowed to assert anything.",
+ "creators": [
+  {
+   "name": "Zhang, Leo Y.",
+   "orcid": "0009-0008-1145-7969"
+  }
+ ],
+ "keywords": [
+  "discrepancy",
+  "arithmetic progression",
+  "Erdos problem 176",
+  "SAT solving",
+  "certificate",
+  "OEIS",
+  "A398541"
+ ],
+ "access_right": "open",
+ "license": "other-closed",
+ "related_identifiers": [
+  {
+   "identifier": "https://oeis.org/A398541",
+   "relation": "isSupplementTo",
+   "scheme": "url"
+  },
+  {
+   "identifier": "https://github.com/Leo-Y-Zhang/DiscrepancyRecords",
+   "relation": "isSupplementTo",
+   "scheme": "url"
+  }
+ ]
+}
