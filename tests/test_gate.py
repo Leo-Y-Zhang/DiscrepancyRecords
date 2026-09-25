@@ -16,7 +16,11 @@ from pathlib import Path
 
 import pytest
 
+from gate import verify_all
 from gate.verify_all import ANCHOR_TERMS, LEVELS, main
+from nk2 import encode_subsets
+from nk2.dimacs import write_cnf
+from tests.test_gate_waves import stub_checker
 
 ROOT = Path(__file__).resolve().parent.parent
 FIXTURES = ROOT / "tests" / "fixtures"
@@ -384,3 +388,64 @@ def test_transcript_instance_outside_the_evidence_tree_is_refused(capsys, tmp_pa
     code, out = run(root, capsys)
     assert code != 0, out
     assert "FAIL G4" in out and "is outside evidence/" in out
+
+
+# --- --reverify-drat on a monolithic proof -----------------------------------
+#
+# drat-trim is absent from CI and application-control blocked on the development
+# machine, so a stub checker stands in for it, as it does for waves. What these
+# pin does not need a real checker: what the gate hands the checker, and whether
+# it believes the answer.
+
+TRANSCRIPT = "evidence/transcripts/k3_l2_N9_subsets.json"
+PROOF = "evidence/drat/k3_l2_N9_subsets.drat"
+
+
+def reverify_setup(tmp_path: Path, monkeypatch, instance: bytes, verdict_line: str) -> Path:
+    """The good fixture with a DRAT block whose proof is on disk, ``instance``
+    at the path the transcript names, and a stub checker that prints
+    ``verdict_line`` whatever it is given."""
+    root = copy_good(tmp_path)
+    add_verified_drat(root, TRANSCRIPT, PROOF)
+    (root / PROOF).parent.mkdir(parents=True, exist_ok=True)
+    (root / PROOF).write_bytes(b"0\n")
+    instance_rel = json.loads((root / TRANSCRIPT).read_text(encoding="ascii"))["instance_path_rel"]
+    (root / instance_rel).parent.mkdir(parents=True, exist_ok=True)
+    (root / instance_rel).write_bytes(instance)
+    checker = stub_checker(tmp_path / "bin", verdict_line)
+    monkeypatch.setattr(verify_all, "find_drat_trim", lambda: checker)
+    return root
+
+
+def regenerated_instance(tmp_path: Path) -> bytes:
+    n_vars, clauses = encode_subsets.build(9, 3, 2)
+    return Path(write_cnf(tmp_path / "regenerated.cnf", n_vars, clauses)["path"]).read_bytes()
+
+
+def test_reverify_reaches_drat_reverified_on_the_regenerated_instance(
+    capsys, tmp_path, monkeypatch
+):
+    root = reverify_setup(tmp_path, monkeypatch, regenerated_instance(tmp_path), "s VERIFIED")
+    code, out = run(root, capsys, extra=["--reverify-drat"])
+    assert code == 0, out
+    assert "declares 'drat-transcript', reaches 'drat-reverified'" in out
+
+
+def test_reverify_refuses_a_run_proof_the_checker_rejects(capsys, tmp_path, monkeypatch):
+    root = reverify_setup(
+        tmp_path, monkeypatch, regenerated_instance(tmp_path), "s NOT VERIFIED"
+    )
+    code, out = run(root, capsys, extra=["--reverify-drat"])
+    assert code != 0, out
+    assert "FAIL G4 N3_2_exact_9 drat-trim re-run did not verify" in out
+
+
+def test_reverify_refuses_an_instance_g3_did_not_regenerate(capsys, tmp_path, monkeypatch):
+    # The instance is gitignored bulk, so the file at the recorded path is
+    # whatever is on disk. Two complementary units are unsatisfiable by unit
+    # propagation, and real drat-trim verifies the one-line proof "0" against
+    # them - so a checker's VERIFIED is only about N = 9 if the file is N = 9.
+    root = reverify_setup(tmp_path, monkeypatch, b"p cnf 1 2\n1 0\n-1 0\n", "s VERIFIED")
+    code, out = run(root, capsys, extra=["--reverify-drat"])
+    assert code != 0, out
+    assert "on disk is not the instance G3 regenerated" in out

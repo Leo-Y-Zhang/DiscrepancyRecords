@@ -649,6 +649,18 @@ def rule_g4(
     if instance_path is None:
         report.fail("G4", claim_id, "transcript records no instance path to re-verify against")
         return 0
+    # The instance is bulk too, so it is whatever happens to be on disk. The
+    # checker's verdict is only about the instance G3 regenerated if the file it
+    # reads is that instance byte for byte; any unsatisfiable CNF at this path
+    # would otherwise verify a proof written for it.
+    if not instance_path.is_file():
+        report.fail("G4", claim_id, f"instance {instance_rel} is not on disk to re-verify against")
+        return 0
+    if sha256_bytes(instance_path.read_bytes()) != transcript["instance_sha256"]:
+        report.fail(
+            "G4", claim_id, f"instance {instance_rel} on disk is not the instance G3 regenerated"
+        )
+        return 0
     completed = subprocess.run(
         [binary, str(instance_path), str(proof_path)],
         capture_output=True, text=True, check=False,

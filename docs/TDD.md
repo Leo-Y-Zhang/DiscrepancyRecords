@@ -275,7 +275,7 @@ rule passes; failures print `FAIL <rule> <claim-id> <reason>`.
 | G1 | Every claim parses against the schema; unknown kind or unknown key fails. |
 | G2 | Lower bound `V`: witness exists, sha256 matches, parses, length `== V-1`, and **the gate itself runs `evaluator.avoids`** - no stored verified-flag is ever read. |
 | G3 | Upper bound `V`: two or more run-logs with `verdict=="UNSAT"` **and `rc==20`** at `(N=V,k,l)`, from **two distinct encoders**; for each, the gate regenerates the instance from the recorded parameters and requires a sha256 match. |
-| G4 | If `drat` present: proof sha256 and byte count match (an absent proof merely makes the level unreachable, and G7 catches the overstatement), transcript ends `s VERIFIED`, transcript instance sha256 equals G3's. drat-trim re-runs only under `--reverify-drat` when the binary exists. |
+| G4 | If `drat` present: proof sha256 and byte count match (an absent proof merely makes the level unreachable, and G7 catches the overstatement), transcript ends `s VERIFIED`, transcript instance sha256 equals G3's. drat-trim re-runs only under `--reverify-drat` when the binary exists, and only against an instance file that hashes to that same sha256 - the file is gitignored bulk, so without the hash any unsatisfiable CNF at that path would verify a proof written for it. |
 | G5 | `ANCHORS.json` equals the 15 published terms held as a literal in the gate; every claim with `k <= 16` is consistent with its anchor; an `exact` claim for `k > 17` fails as non-contiguous with `a(16)`. |
 | G6 | No committed artifact holds an absolute path (`[A-Za-z]:[\\/]`, `/home/`, `/Users/`) or a non-ASCII byte. |
 | G7 | Achieved evidence level `>=` declared `evidence_level`; overstatement fails, understatement prints INFO. Levels below. |
@@ -720,6 +720,8 @@ test never observed failing is decoration):
 | M69 | import treats half a proof pair as no proof at all (`sha is None and size is None` -> `or`) | the sha-without-size and size-without-sha verdict sources |
 | M70 | import demands the checker's nine keys exactly, so a line carrying `proof_pruned` is refused | the pruned-transcript source, which is what the live checker writes |
 | M71 | import reads the transcripts only after the completeness check | the unreadable-transcripts-over-an-unfinished-wave source, where the incompleteness message would otherwise mask them |
+| M72 | G4's `--reverify-drat` runs the checker on whatever instance file is on disk | two complementary units at the recorded path, against a stub checker; real drat-trim verifies the proof `0` against them |
+| M73 | G4's `--reverify-drat` ignores what the checker said | a stub checker printing `s NOT VERIFIED` |
 
 ## CI and environment
 
