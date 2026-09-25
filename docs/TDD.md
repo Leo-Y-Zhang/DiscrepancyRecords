@@ -722,6 +722,7 @@ test never observed failing is decoration):
 | M71 | import reads the transcripts only after the completeness check | the unreadable-transcripts-over-an-unfinished-wave source, where the incompleteness message would otherwise mask them |
 | M72 | G4's `--reverify-drat` runs the checker on whatever instance file is on disk | two complementary units at the recorded path, against a stub checker; real drat-trim verifies the proof `0` against them |
 | M73 | G4's `--reverify-drat` ignores what the checker said | a stub checker printing `s NOT VERIFIED` |
+| M74 | `solve` assumes a timeout's partial output is bytes | a `str` one, which is what Windows hands back, and a stub that flushes before it is killed |
 
 ## CI and environment
 
