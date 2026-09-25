@@ -1173,8 +1173,8 @@ def reverify_wave(
 ) -> bool:
     """Re-run the checker on every proof this wave still has on disk.
 
-    Each proof is decompressed into a temp directory under the repository's
-    gitignored ``scratch/``, hashed against what the transcript recorded, and
+    Each proof is decompressed into a gitignored temp directory,
+    ``scratch/nk2wave-*``, hashed against what the transcript recorded, and
     fed to the checker with the cube instance rebuilt beside it. This is a full
     re-check: one cube instance is written per proof, so it costs the base
     instance once per cube. On a wave of thousands that is a job for a machine
