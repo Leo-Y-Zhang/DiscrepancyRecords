@@ -244,8 +244,9 @@ def test_witness_outside_the_root_is_refused(capsys, tmp_path):
 
 
 def test_witness_in_a_gitignored_directory_is_refused(capsys, tmp_path):
-    # scratch/ is gitignored, so this witness is on one machine and in no
-    # checkout. No `..` is needed to leave the evidence tree.
+    # scratch/ is the campaign's working tree, not evidence, and much of it is
+    # gitignored, so this witness may be on one machine and in no checkout. No
+    # `..` is needed to leave the evidence tree.
     root = copy_good(tmp_path)
     move_out(root, "evidence/witnesses/k3_l2_N8.txt", root / "scratch/k3_l2_N8.txt")
     patch_claim(root, lambda claim: claim["witness"].update({"path": "scratch/k3_l2_N8.txt"}))

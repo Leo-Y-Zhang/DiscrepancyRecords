@@ -172,8 +172,8 @@ ABSOLUTE_PATH_PATTERNS = (
 # Where each kind of artifact has to live, from the data model in docs/TDD.md.
 # `root / <string out of CLAIMS.json>` is not a containment check on its own: it
 # resolves `../elsewhere/witness.txt` happily, it takes an absolute path by
-# replacing the root outright, and it accepts a path into the gitignored
-# scratch/ or evidence/drat/ trees. Any of those makes the gate say "verified
+# replacing the root outright, and it accepts a path into scratch/ or the
+# gitignored evidence/drat/ tree. Any of those makes the gate say "verified
 # from artifacts on disk" for a checkout that does not contain the artifact -
 # green here, red for a stranger - which is the deception the gate exists to
 # prevent. So a claimed path must be a plain repo-relative path to a committed

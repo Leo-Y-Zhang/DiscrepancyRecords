@@ -277,7 +277,7 @@ rule passes; failures print `FAIL <rule> <claim-id> <reason>`.
 | G3 | Upper bound `V`: two or more run-logs with `verdict=="UNSAT"` **and `rc==20`** at `(N=V,k,l)`, from **two distinct encoders**; for each, the gate regenerates the instance from the recorded parameters and requires a sha256 match. |
 | G4 | If `drat` present: proof sha256 and byte count match (an absent proof merely makes the level unreachable, and G7 catches the overstatement), transcript ends `s VERIFIED`, transcript instance sha256 equals G3's. drat-trim re-runs only under `--reverify-drat` when the binary exists, and only against an instance file that hashes to that same sha256 - the file is gitignored bulk, so without the hash any unsatisfiable CNF at that path would verify a proof written for it. |
 | G5 | `ANCHORS.json` equals the 15 published terms held as a literal in the gate; every claim with `k <= 16` is consistent with its anchor; an `exact` claim for `k > 17` fails as non-contiguous with `a(16)`. |
-| G6 | No committed artifact holds an absolute path (`[A-Za-z]:[\\/]`, `/home/`, `/Users/`) or a non-ASCII byte. |
+| G6 | No committed artifact holds an absolute path (`[A-Za-z]:[\\/]`, `/home/`, `/Users/`) or a non-ASCII byte. Not scanned: `scratch/` (the campaign pipeline, tracked since 2026-08-24, which names the campaign machine's tool paths and is never evidence) and `tests/fixtures/` (scanned when a fixture is itself the root). |
 | G7 | Achieved evidence level `>=` declared `evidence_level`; overstatement fails, understatement prints INFO. Levels below. |
 | W1 | The manifest is `evidence/waves/<name>/manifest.json` - **that directory is the wave**, and W3 and W4 read nothing from outside it - parses, has exactly the `cube-wave.v2` keys, and its base instance **regenerates** from `(N,k,l,encoder,symmetry_break)` to the recorded sha256, var count and clause count - the same machinery G3 uses. `split_vars` are distinct main variables in `1..N`; `n_cubes == 2**len(split_vars)`. |
 | W2 | The cube set is complete **by construction**: the gate re-derives every cube from `split_vars` and hashes the result against `cubes_sha256`. No cubes file is read, and an unrecognised `cube_construction` fails rather than being guessed at. |
@@ -533,7 +533,7 @@ witness of length `V` not `V-1`; single-encoder UNSAT; `verdict UNSAT` with
 whitespace inside the data line, two data lines, and a comments-only file.
 Path rule, each against a copy of the good fixture whose artifact is genuine and
 only mislocated: a witness or run-log path that climbs out of the root with
-`..`, one that lands in the gitignored `scratch/`, an absolute one, a committed
+`..`, one that lands in `scratch/`, an absolute one, a committed
 one carrying a gitignored suffix, a transcript outside `evidence/transcripts/`,
 a proof or instance path out of the tree, and a witness directory that is a link
 to somewhere else. Each must fail under the rule that read it, and a good DRAT
