@@ -8,6 +8,7 @@ and breaks exactly one thing. The gate must exit non-zero *and* name the rule.
 """
 
 import gzip
+import hashlib
 import json
 import os
 import shutil
@@ -120,6 +121,26 @@ def test_w1_unknown_manifest_schema_is_refused(capsys, tmp_path):
     code, out = run(root, capsys)
     assert code != 0, out
     assert any(line.startswith("FAIL W1 ") for line in failures(out)), out
+
+
+@pytest.mark.parametrize(
+    ("patch", "reason"),
+    [
+        ({"symmetry_break": "true"}, "wave symmetry_break must be true or false"),
+        ({"snapshot_commit": "HEAD"}, "wave snapshot_commit is not a 40-character commit id"),
+    ],
+    ids=["symmetry_break", "snapshot_commit"],
+)
+def test_w1_manifest_field_of_the_wrong_shape_is_refused(patch, reason, capsys, tmp_path):
+    # The string "true" regenerates exactly what true does, so regeneration
+    # alone would let it through; the shape check is what refuses it. The
+    # snapshot commit is never evidence, but it has to be an id somebody can
+    # look up.
+    root = build_wave_repo(tmp_path / "repo")
+    patch_manifest(root, lambda m: m.update(patch))
+    code, out = run(root, capsys)
+    assert code != 0, out
+    assert f"FAIL W1 N3_2_wave_9 {reason}" in out
 
 
 # --- W2: the cube set is complete by construction ---------------------------
@@ -245,6 +266,16 @@ def test_w4_transcript_without_a_checker_is_refused(capsys, tmp_path):
     code, out = run(root, capsys)
     assert code != 0, out
     assert any(line.startswith("FAIL W4 ") for line in failures(out)), out
+
+
+def test_w4_proof_that_is_not_a_compressed_proof_is_refused(capsys, tmp_path):
+    root = build_wave_repo(tmp_path / "repo")
+    patch_transcript(
+        root, 0, lambda line: line.update({"proof_path_rel": line["proof_path_rel"][:-3]})
+    )
+    code, out = run(root, capsys)
+    assert code != 0, out
+    assert "FAIL W4" in out and "does not end .drat.gz" in out
 
 
 def test_w4_proof_outside_the_evidence_tree_is_refused(capsys, tmp_path):
@@ -424,6 +455,57 @@ def test_a_wave_that_fails_lends_no_evidence_level(capsys, tmp_path):
     code, out = run(root, capsys)
     assert code != 0, out
     assert any(line.startswith("FAIL W3 ") for line in failures(out)), out
+
+
+def test_a_drat_checked_run_of_the_same_encoder_does_not_lift_a_wave(capsys, tmp_path):
+    # Everything here is one encoding: a seqcount wave, and a seqcount run-log
+    # whose proof has a transcript that G4 accepts. A DRAT proof certifies that
+    # a CNF is unsatisfiable, never that the CNF is the problem, so it lifts
+    # only a claim that already has two encoders behind its run-logs. Without
+    # that condition this claim reaches drat-transcript on one encoder.
+    root = build_wave_repo(
+        tmp_path / "repo", kind="upper_bound_wave", confirm=None, transcripts=False
+    )
+    run_rel = "evidence/runs/k3_l2_N9_seqcount.json"
+    (root / run_rel).parent.mkdir(parents=True)
+    shutil.copyfile(_wavefix.GOOD / run_rel, root / run_rel)
+    instance = read_json(root / run_rel)["instance"]
+    proof = b"0\n"
+    transcript_rel = "evidence/transcripts/k3_l2_N9_seqcount.json"
+    _wavefix.write_json(
+        root / transcript_rel,
+        {
+            "schema": "nk2.transcript.v1",
+            "tool": "drat-trim",
+            "rc": 0,
+            "instance_path_rel": instance["path_rel"],
+            "instance_sha256": instance["sha256"],
+            "proof_path_rel": "evidence/drat/k3_l2_N9_seqcount.drat",
+            "proof_sha256": hashlib.sha256(proof).hexdigest(),
+            "proof_bytes": len(proof),
+            "output_tail": ["s VERIFIED"],
+        },
+    )
+    patch_claim(
+        root,
+        lambda claim: claim.update(
+            {
+                "unsat_runs": [run_rel],
+                "drat": {
+                    "proof_sha256": hashlib.sha256(proof).hexdigest(),
+                    "proof_bytes": len(proof),
+                    "transcript": transcript_rel,
+                },
+                "evidence_level": "drat-transcript",
+            }
+        ),
+    )
+    code, out = run(root, capsys)
+    assert code != 0, out
+    assert failures(out) == [
+        "FAIL G7 N3_2_wave_9 declares evidence_level 'drat-transcript' but the artifacts "
+        "reach 'unsat-wave'"
+    ], out
 
 
 # --- a wave solved without proofs -------------------------------------------

@@ -723,6 +723,23 @@ test never observed failing is decoration):
 | M72 | G4's `--reverify-drat` runs the checker on whatever instance file is on disk | two complementary units at the recorded path, against a stub checker; real drat-trim verifies the proof `0` against them |
 | M73 | G4's `--reverify-drat` ignores what the checker said | a stub checker printing `s NOT VERIFIED` |
 | M74 | `solve` assumes a timeout's partial output is bytes | a `str` one, which is what Windows hands back, and a stub that flushes before it is killed |
+| M75 | G3 does not check that a run-log is about the claim's `(N,k,l)` | run-logs retargeted to `N=10`, `k=4` and `l=3`, each regenerating honestly |
+| M76 | G3 reads `rc` and not `verdict` | `rc 20` beside `verdict UNKNOWN` |
+| M77 | G4 does not tie a transcript to the claim's proof sha256 or byte count | a transcript naming another proof, one field at a time |
+| M78 | G4 does not tie a transcript to an instance G3 verified | a transcript over the genuine `N=10` instance |
+| M79 | G4 does not hash a proof that is on disk | a proof of the recorded size with other bytes |
+| M80 | a DRAT transcript lifts a claim whose run-logs have one encoder (`drat_level and dual` -> `drat_level`) | a seqcount wave plus a proof-checked seqcount run-log, declared `drat-transcript` |
+| M81 | G5 lets an `exact`, a lower bound or an upper bound contradict its anchor | the three cases on `a(3)`, asserted on G5's own line since each also breaks G2 or G3 |
+| M82 | G5's contiguity rule is off by one (`k > 18`) | an `exact` claim at `k=18`; the g5 fixture is `k=19` |
+| M83 | G5 stops comparing `ANCHORS.json` with the gate's copy | a changed sequence, offset and last term |
+| M84 | G6 drops the non-ASCII, `/home/` or `/Users/` check | a note carrying each |
+| M85 | G1 accepts a duplicate claim id | the good claim twice |
+| M86 | G1 accepts a claims file of another schema or with extra keys, or skips an entry that is not an object | the good claim inside each wrong envelope |
+| M87 | the SELFTEST is not run, or does not fail the exit code | `avoids()` stubbed to accept everything, against the good fixture |
+| M88 | G1 accepts `k = 1`, an unknown `evidence_level` or `notes` that are not text | each on the good claim; the first two otherwise crash the gate further on |
+| M89 | W1 accepts a `symmetry_break` that is not a boolean, or a `snapshot_commit` that is not a commit id | `"true"`, which regenerates exactly what `true` does, and `"HEAD"` |
+| M90 | W4 accepts a proof path that does not end `.drat.gz` | a transcript line whose proof path drops the `.gz` |
+| M91 | G2 does not compare the witness with its recorded sha256 | the good witness negated, which avoids `(3,2)` just as well |
 
 ## CI and environment
 
