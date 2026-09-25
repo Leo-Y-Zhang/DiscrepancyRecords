@@ -740,6 +740,9 @@ test never observed failing is decoration):
 | M89 | W1 accepts a `symmetry_break` that is not a boolean, or a `snapshot_commit` that is not a commit id | `"true"`, which regenerates exactly what `true` does, and `"HEAD"` |
 | M90 | W4 accepts a proof path that does not end `.drat.gz` | a transcript line whose proof path drops the `.gz` |
 | M91 | G2 does not compare the witness with its recorded sha256 | the good witness negated, which avoids `(3,2)` just as well |
+| M92 | witness reader takes a blank line as the data line | a file whose only non-comment line is blank, which would read as the empty coloring |
+| M93 | import accepts a manifest `N` that is not an integer, an unknown encoder, a `base.sha256` that is not a digest, or a malformed `snapshot_commit` | one source per field; the tool does not regenerate, so W1 would otherwise refuse the wave only after it was written |
+| M94 | import copies a manifest with CR bytes, or a transcript line naming no checker | a CRLF manifest, and a `tool` of one space |
 
 ## CI and environment
 
