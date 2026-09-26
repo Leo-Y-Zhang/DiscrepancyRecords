@@ -743,6 +743,7 @@ test never observed failing is decoration):
 | M92 | witness reader takes a blank line as the data line | a file whose only non-comment line is blank, which would read as the empty coloring |
 | M93 | import accepts a manifest `N` that is not an integer, an unknown encoder, a `base.sha256` that is not a digest, or a malformed `snapshot_commit` | one source per field; the tool does not regenerate, so W1 would otherwise refuse the wave only after it was written |
 | M94 | import copies a manifest with CR bytes, or a transcript line naming no checker | a CRLF manifest, and a `tool` of one space |
+| M95 | G4 does not compare a proof on disk with the recorded byte count | a claim and transcript that agree on a byte count the proof they name by sha256 does not have |
 
 ## CI and environment
 

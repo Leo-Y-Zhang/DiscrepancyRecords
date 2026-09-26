@@ -557,6 +557,23 @@ def test_proof_on_disk_that_is_not_the_recorded_one_is_refused(capsys, tmp_path)
     assert "FAIL G4" in out and "proof on disk does not match the recorded sha256" in out
 
 
+def test_proof_on_disk_shorter_than_its_recorded_byte_count_is_refused(capsys, tmp_path):
+    # The claim and the transcript agree on the proof's sha256 and on a byte
+    # count, and the proof on disk is the one that sha256 names. The byte count
+    # is not its length, so the record contradicts itself, and only the size
+    # check on the proof itself can see it: the transcript check compares two
+    # copies of the same wrong number.
+    root = copy_good(tmp_path)
+    add_verified_drat(root, TRANSCRIPT, PROOF)
+    edit_json(root / TRANSCRIPT, lambda transcript: transcript.update({"proof_bytes": 3}))
+    patch_claim(root, lambda claim: claim["drat"].update({"proof_bytes": 3}))
+    (root / PROOF).parent.mkdir(parents=True, exist_ok=True)
+    (root / PROOF).write_bytes(b"0\n")  # the recorded proof, two bytes long
+    code, out = run(root, capsys)
+    assert code != 0, out
+    assert "FAIL G4 N3_2_exact_9 proof on disk does not match the recorded byte count" in out
+
+
 @pytest.mark.parametrize(
     ("patch", "reason"),
     [
