@@ -51,6 +51,11 @@ scratch/wave*/*
 !scratch/wave*/manifest.json
 !scratch/wave*/sample.json
 scratch/nk2snap/
+# `gate/verify_all.py --reverify-drat` rebuilds each wave's base and cube
+# instances in a temp directory here. A finished run removes it; a killed one
+# leaves the base.cnf behind (16 to 23 MB for the N = 274 waves), which the
+# evidence-only `*.cnf` patterns above do not cover.
+scratch/nk2wave-*/
 scratch/*.log
 scratch/*.pid
 scratch/*.pid.error

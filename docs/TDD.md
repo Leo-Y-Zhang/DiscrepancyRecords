@@ -275,9 +275,9 @@ rule passes; failures print `FAIL <rule> <claim-id> <reason>`.
 | G1 | Every claim parses against the schema; unknown kind or unknown key fails. |
 | G2 | Lower bound `V`: witness exists, sha256 matches, parses, length `== V-1`, and **the gate itself runs `evaluator.avoids`** - no stored verified-flag is ever read. |
 | G3 | Upper bound `V`: two or more run-logs with `verdict=="UNSAT"` **and `rc==20`** at `(N=V,k,l)`, from **two distinct encoders**; for each, the gate regenerates the instance from the recorded parameters and requires a sha256 match. |
-| G4 | If `drat` present: proof sha256 and byte count match (an absent proof merely makes the level unreachable, and G7 catches the overstatement), transcript ends `s VERIFIED`, transcript instance sha256 equals G3's. drat-trim re-runs only under `--reverify-drat` when the binary exists. |
+| G4 | If `drat` present: proof sha256 and byte count match (an absent proof merely makes the level unreachable, and G7 catches the overstatement), transcript ends `s VERIFIED`, transcript instance sha256 equals G3's. drat-trim re-runs only under `--reverify-drat` when the binary exists, and only against an instance file that hashes to that same sha256 - the file is gitignored bulk, so without the hash any unsatisfiable CNF at that path would verify a proof written for it. |
 | G5 | `ANCHORS.json` equals the 15 published terms held as a literal in the gate; every claim with `k <= 16` is consistent with its anchor; an `exact` claim for `k > 17` fails as non-contiguous with `a(16)`. |
-| G6 | No committed artifact holds an absolute path (`[A-Za-z]:[\\/]`, `/home/`, `/Users/`) or a non-ASCII byte. |
+| G6 | No committed artifact holds an absolute path (`[A-Za-z]:[\\/]`, `/home/`, `/Users/`) or a non-ASCII byte. Not scanned: `scratch/` (the campaign pipeline, tracked since 2026-08-24, which names the campaign machine's tool paths and is never evidence) and `tests/fixtures/` (scanned when a fixture is itself the root). |
 | G7 | Achieved evidence level `>=` declared `evidence_level`; overstatement fails, understatement prints INFO. Levels below. |
 | W1 | The manifest is `evidence/waves/<name>/manifest.json` - **that directory is the wave**, and W3 and W4 read nothing from outside it - parses, has exactly the `cube-wave.v2` keys, and its base instance **regenerates** from `(N,k,l,encoder,symmetry_break)` to the recorded sha256, var count and clause count - the same machinery G3 uses. `split_vars` are distinct main variables in `1..N`; `n_cubes == 2**len(split_vars)`. |
 | W2 | The cube set is complete **by construction**: the gate re-derives every cube from `split_vars` and hashes the result against `cubes_sha256`. No cubes file is read, and an unrecognised `cube_construction` fails rather than being guessed at. |
@@ -533,7 +533,7 @@ witness of length `V` not `V-1`; single-encoder UNSAT; `verdict UNSAT` with
 whitespace inside the data line, two data lines, and a comments-only file.
 Path rule, each against a copy of the good fixture whose artifact is genuine and
 only mislocated: a witness or run-log path that climbs out of the root with
-`..`, one that lands in the gitignored `scratch/`, an absolute one, a committed
+`..`, one that lands in `scratch/`, an absolute one, a committed
 one carrying a gitignored suffix, a transcript outside `evidence/transcripts/`,
 a proof or instance path out of the tree, and a witness directory that is a link
 to somewhere else. Each must fail under the rule that read it, and a good DRAT
@@ -720,6 +720,30 @@ test never observed failing is decoration):
 | M69 | import treats half a proof pair as no proof at all (`sha is None and size is None` -> `or`) | the sha-without-size and size-without-sha verdict sources |
 | M70 | import demands the checker's nine keys exactly, so a line carrying `proof_pruned` is refused | the pruned-transcript source, which is what the live checker writes |
 | M71 | import reads the transcripts only after the completeness check | the unreadable-transcripts-over-an-unfinished-wave source, where the incompleteness message would otherwise mask them |
+| M72 | G4's `--reverify-drat` runs the checker on whatever instance file is on disk | two complementary units at the recorded path, against a stub checker; real drat-trim verifies the proof `0` against them |
+| M73 | G4's `--reverify-drat` ignores what the checker said | a stub checker printing `s NOT VERIFIED` |
+| M74 | `solve` assumes a timeout's partial output is bytes | a `str` one, which is what Windows hands back, and a stub that flushes before it is killed |
+| M75 | G3 does not check that a run-log is about the claim's `(N,k,l)` | run-logs retargeted to `N=10`, `k=4` and `l=3`, each regenerating honestly |
+| M76 | G3 reads `rc` and not `verdict` | `rc 20` beside `verdict UNKNOWN` |
+| M77 | G4 does not tie a transcript to the claim's proof sha256 or byte count | a transcript naming another proof, one field at a time |
+| M78 | G4 does not tie a transcript to an instance G3 verified | a transcript over the genuine `N=10` instance |
+| M79 | G4 does not hash a proof that is on disk | a proof of the recorded size with other bytes |
+| M80 | a DRAT transcript lifts a claim whose run-logs have one encoder (`drat_level and dual` -> `drat_level`) | a seqcount wave plus a proof-checked seqcount run-log, declared `drat-transcript` |
+| M81 | G5 lets an `exact`, a lower bound or an upper bound contradict its anchor | the three cases on `a(3)`, asserted on G5's own line since each also breaks G2 or G3 |
+| M82 | G5's contiguity rule is off by one (`k > 18`) | an `exact` claim at `k=18`; the g5 fixture is `k=19` |
+| M83 | G5 stops comparing `ANCHORS.json` with the gate's copy | a changed sequence, offset and last term |
+| M84 | G6 drops the non-ASCII, `/home/` or `/Users/` check | a note carrying each |
+| M85 | G1 accepts a duplicate claim id | the good claim twice |
+| M86 | G1 accepts a claims file of another schema or with extra keys, or skips an entry that is not an object | the good claim inside each wrong envelope |
+| M87 | the SELFTEST is not run, or does not fail the exit code | `avoids()` stubbed to accept everything, against the good fixture |
+| M88 | G1 accepts `k = 1`, an unknown `evidence_level` or `notes` that are not text | each on the good claim; the first two otherwise crash the gate further on |
+| M89 | W1 accepts a `symmetry_break` that is not a boolean, or a `snapshot_commit` that is not a commit id | `"true"`, which regenerates exactly what `true` does, and `"HEAD"` |
+| M90 | W4 accepts a proof path that does not end `.drat.gz` | a transcript line whose proof path drops the `.gz` |
+| M91 | G2 does not compare the witness with its recorded sha256 | the good witness negated, which avoids `(3,2)` just as well |
+| M92 | witness reader takes a blank line as the data line | a file whose only non-comment line is blank, which would read as the empty coloring |
+| M93 | import accepts a manifest `N` that is not an integer, an unknown encoder, a `base.sha256` that is not a digest, or a malformed `snapshot_commit` | one source per field; the tool does not regenerate, so W1 would otherwise refuse the wave only after it was written |
+| M94 | import copies a manifest with CR bytes, or a transcript line naming no checker | a CRLF manifest, and a `tool` of one space |
+| M95 | G4 does not compare a proof on disk with the recorded byte count | a claim and transcript that agree on a byte count the proof they name by sha256 does not have |
 
 ## CI and environment
 

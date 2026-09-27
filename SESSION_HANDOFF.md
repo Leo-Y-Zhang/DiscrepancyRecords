@@ -2,6 +2,12 @@
 
 Updated: 2026-08-19 (mid-campaign), plus the 2026-08-24 block immediately below.
 
+**Historical.** Nothing below has been updated since the campaign finished on
+2026-08-28 (`scratch/DONE.json`: every cube of both waves returned rc 20). The
+running campaign, the "exact next step" and the claim counts it describes are
+superseded: what this repository asserts is `claims/CLAIMS.json`, and the
+README's Status says it in prose.
+
 ## STOP - READ BEFORE MOVING OR RENAMING THIS DIRECTORY (2026-08-24)
 
 This clone's directory is named `DiscrepancyRecords_restored`, not

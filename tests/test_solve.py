@@ -111,6 +111,35 @@ def test_timeout_records_rc_none_and_unknown(stub, instance, tmp_path):
     assert log.timed_out is True
 
 
+def test_timeout_after_flushed_output_records_unknown(stub, instance, tmp_path):
+    # kissat flushes its banner the moment it starts, so a real timeout always
+    # has partial output. The stub above never flushes, which is why the test
+    # before this one never saw any.
+    log = solve(
+        instance,
+        stub("c banner", 10, extra="import sys, time; sys.stdout.flush(); time.sleep(30)"),
+        2,
+        root=tmp_path,
+    )
+    assert (log.rc, log.verdict, log.timed_out) == (None, "UNKNOWN", True)
+
+
+@pytest.mark.parametrize(
+    "partial", [b"c banner\n", "c banner\n", None], ids=["bytes", "str", "none"]
+)
+def test_timeout_output_of_either_type_records_unknown(partial, instance, tmp_path, monkeypatch):
+    # What a timed-out subprocess.run(text=True) hands back depends on the
+    # platform: POSIX puts the raw bytes read so far on the exception, while
+    # Windows collects them through the text-mode pipe after the kill and puts a
+    # str there. Both are a timeout, and a timeout is UNKNOWN with a run-log.
+    def time_out(argv, **kwargs):
+        raise subprocess.TimeoutExpired(argv, kwargs.get("timeout"), output=partial)
+
+    monkeypatch.setattr(subprocess, "run", time_out)
+    log = solve(instance, [sys.executable, "solver.py"], 1, root=tmp_path)
+    assert (log.rc, log.verdict, log.timed_out) == (None, "UNKNOWN", True)
+
+
 def test_run_log_shape_and_no_absolute_paths(stub, instance, tmp_path):
     log = solve(instance, stub("s UNSATISFIABLE", 20), 60, root=tmp_path)
     path = log.write(tmp_path / "run.json", root=tmp_path)

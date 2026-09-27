@@ -172,8 +172,8 @@ ABSOLUTE_PATH_PATTERNS = (
 # Where each kind of artifact has to live, from the data model in docs/TDD.md.
 # `root / <string out of CLAIMS.json>` is not a containment check on its own: it
 # resolves `../elsewhere/witness.txt` happily, it takes an absolute path by
-# replacing the root outright, and it accepts a path into the gitignored
-# scratch/ or evidence/drat/ trees. Any of those makes the gate say "verified
+# replacing the root outright, and it accepts a path into scratch/ or the
+# gitignored evidence/drat/ tree. Any of those makes the gate say "verified
 # from artifacts on disk" for a checkout that does not contain the artifact -
 # green here, red for a stranger - which is the deception the gate exists to
 # prevent. So a claimed path must be a plain repo-relative path to a committed
@@ -648,6 +648,18 @@ def rule_g4(
         return LEVEL_DRAT_TRANSCRIPT
     if instance_path is None:
         report.fail("G4", claim_id, "transcript records no instance path to re-verify against")
+        return 0
+    # The instance is bulk too, so it is whatever happens to be on disk. The
+    # checker's verdict is only about the instance G3 regenerated if the file it
+    # reads is that instance byte for byte; any unsatisfiable CNF at this path
+    # would otherwise verify a proof written for it.
+    if not instance_path.is_file():
+        report.fail("G4", claim_id, f"instance {instance_rel} is not on disk to re-verify against")
+        return 0
+    if sha256_bytes(instance_path.read_bytes()) != transcript["instance_sha256"]:
+        report.fail(
+            "G4", claim_id, f"instance {instance_rel} on disk is not the instance G3 regenerated"
+        )
         return 0
     completed = subprocess.run(
         [binary, str(instance_path), str(proof_path)],
@@ -1161,8 +1173,8 @@ def reverify_wave(
 ) -> bool:
     """Re-run the checker on every proof this wave still has on disk.
 
-    Each proof is decompressed into a temp directory under the repository's
-    gitignored ``scratch/``, hashed against what the transcript recorded, and
+    Each proof is decompressed into a gitignored temp directory,
+    ``scratch/nk2wave-*``, hashed against what the transcript recorded, and
     fed to the checker with the cube instance rebuilt beside it. This is a full
     re-check: one cube instance is written per proof, so it costs the base
     instance once per cube. On a wave of thousands that is a job for a machine

@@ -109,6 +109,15 @@ def test_reader_rejects_empty_data_line(tmp_path):
         read_witness(p)
 
 
+def test_reader_rejects_a_blank_line_where_the_data_belongs(tmp_path):
+    # The case above also fails for the data line that follows the blank one.
+    # With nothing after it, a blank line is the whole data line, and a reader
+    # that took it would hand back the empty coloring.
+    p = write_raw(tmp_path, "# k = 3\n\n")
+    with pytest.raises(WitnessFormatError, match="empty data line"):
+        read_witness(p)
+
+
 def test_reader_rejects_empty_file(tmp_path):
     p = write_raw(tmp_path, "")
     with pytest.raises(WitnessFormatError):

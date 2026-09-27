@@ -728,6 +728,57 @@ def test_a_manifest_of_an_unknown_schema_is_refused(capsys, tmp_path):
     assert "cube-wave.v1" in err and "cube-wave.v2" in err
 
 
+@pytest.mark.parametrize(
+    ("mutate", "reason"),
+    [
+        (lambda m: m.update({"N": str(m["N"])}), "manifest N must be a positive integer"),
+        (lambda m: m.update({"encoder": "kissat"}), "manifest names unknown encoder 'kissat'"),
+        (
+            lambda m: m["base"].update({"sha256": m["base"]["sha256"][:40]}),
+            "manifest base.sha256 is not a sha256 hex digest",
+        ),
+        (
+            lambda m: m.update({"snapshot_commit": "HEAD"}),
+            "manifest snapshot_commit is not a 40-character commit id",
+        ),
+    ],
+    ids=["N", "encoder", "base-sha256", "snapshot_commit"],
+)
+def test_a_manifest_field_of_the_wrong_shape_is_refused(mutate, reason, capsys, tmp_path):
+    # The tool does not regenerate the base instance, so without these each of
+    # the manifests below would import, and W1 would refuse the wave a step
+    # later - after a destination the tool will not overwrite had been filled.
+    root = make_repo(tmp_path)
+    source = write_source_wave(tmp_path / "source")
+    patch_source_manifest(source, mutate)
+    assert run_import(root, source) == 1
+    assert reason in capsys.readouterr().err
+    assert not (root / WAVE_DIR).exists()
+
+
+def test_a_manifest_with_crlf_line_endings_is_refused(capsys, tmp_path):
+    # The manifest is copied byte for byte, and every artifact here is LF.
+    root = make_repo(tmp_path)
+    source = write_source_wave(tmp_path / "source")
+    manifest = source / "manifest.json"
+    manifest.write_bytes(manifest.read_bytes().replace(b"\n", b"\r\n"))
+    assert run_import(root, source) == 1
+    assert "holds a CR byte" in capsys.readouterr().err
+    assert not (root / WAVE_DIR).exists()
+
+
+def test_a_transcript_that_names_no_checker_is_refused(capsys, tmp_path):
+    root = make_repo(tmp_path)
+    source = write_source_wave(tmp_path / "source")
+    path = source / "transcripts.jsonl"
+    lines = read_jsonl(path)
+    lines[1]["tool"] = " "
+    write_jsonl(path, lines)
+    assert run_import(root, source) == 1
+    assert "cube 1 transcript names no checker" in capsys.readouterr().err
+    assert not (root / WAVE_DIR).exists()
+
+
 def test_an_unknown_cube_construction_is_refused(capsys, tmp_path):
     root = make_repo(tmp_path)
     source = write_source_wave(tmp_path / "source")

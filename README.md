@@ -26,8 +26,9 @@ a `k`-term arithmetic progression `P` (that is `a, a+d, ..., a+(k-1)d` inside
 where every `k`-AP has `|sum| < l` **avoids** `(k,l)`, and proves
 `N(k,l) >= N+1`. UNSAT of the avoidance instance at `N` proves `N(k,l) <= N`.
 
-A398541 is `N(n,2)` with offset 2. Terms `a(2)..a(16)` are known. `a(17)` is
-not, and that is the target of this campaign.
+A398541 is `N(n,2)` with offset 2. Terms `a(2)..a(16)` were published before
+this campaign; `a(17)` was open, and it is what the campaign set out to settle.
+The Status above says what is on record for it.
 
 ## What is here
 
@@ -47,8 +48,14 @@ not, and that is the target of this campaign.
   are emitted; no transcript is on record yet, and every claim carries a null
   `drat` block. DIMACS instances and DRAT proofs are not committed; they are
   regenerated and hash-matched. A cube-and-conquer wave's manifest, per-cube
-  verdicts and per-cube transcripts belong under `evidence/waves/`; no wave is
-  on record, so that directory does not exist yet.
+  verdicts and per-cube transcripts belong under `evidence/waves/<name>/`; two
+  waves are on record there, `wave274tot` and `wave274`, each a manifest and a
+  `verdicts.jsonl` with no transcripts.
+- `scratch/` - the campaign pipeline that ran those waves (orchestrator, wave
+  driver, checker passes, watchdog) and its surviving run records, tracked since
+  the incident in `docs/INCIDENT_2026-08-24.md` so it cannot be lost again. It is
+  operational code, not evidence: nothing in `claims/` may point into it, and it
+  carries the campaign machine's tool paths, so G6 does not scan it.
 - `docs/PRD.md`, `docs/TDD.md` - why and how, written before the code.
 
 ## Running it
@@ -90,7 +97,7 @@ CPython 3.13 installation; `python -V` printing a version is the check.
 | G3 | An UNSAT claim backed by fewer than two encoders, by a run-log whose return code was not 20, or by an instance that does not regenerate to the recorded sha256. |
 | G4 | A DRAT record whose transcript does not end `s VERIFIED` or does not match the instance G3 checked. |
 | G5 | An anchor file that disagrees with the published terms, a claim that contradicts its anchor, or an exact term that is not contiguous with `a(16)`. |
-| G6 | Any committed artifact holding an absolute path or a non-ASCII byte. |
+| G6 | Any committed artifact holding an absolute path or a non-ASCII byte. `scratch/` is not scanned, and `tests/fixtures/` only when a fixture is itself the root. |
 | G7 | Any claim that declares more evidence than its artifacts support. |
 | W1-W6 | A cube-and-conquer wave whose base instance does not regenerate, whose cube set is not every case, that has a cube missing or not returned UNSAT, whose transcripts do not match its verdicts, that is not about the instance the claim is about, or that is asked to carry an `exact` claim on one encoder. |
 
@@ -109,9 +116,10 @@ case would write a shorter file and a hash that matches it. An `exact` claim
 resting on a wave additionally needs a second complete wave from a different
 encoder, or a monolithic run from one: a DRAT proof certifies that a CNF is
 unsatisfiable and never that the CNF is the problem, so no amount of
-proof-checking substitutes for a second encoding. **No wave claim is on record
-in this repository. Nothing here says a wave has completed, and the gate is
-where that will become visible if one ever does.**
+proof-checking substitutes for a second encoding. **One wave claim is on
+record: `N17_2_exact_274` rests on `evidence/waves/wave274tot` (totalizer, 16,384
+cubes), confirmed by `evidence/waves/wave274` (sequential counter, 4,096 cubes),
+and the gate re-checks both on every run.**
 
 A wave runs outside this repository - sixteen thousand cube instances and tens
 of gigabytes of DRAT proofs are not a git tree - and `tools/import_wave.py` is
@@ -154,9 +162,10 @@ gate, and it is where a second pair of eyes earned its keep.
 G2, G3 and G4 share one more rule: every path a claim or a transcript records
 must be a plain repo-relative path to an artifact in the directory that kind of
 artifact belongs in. A path that climbs out of the checkout, is absolute, lands
-in a gitignored tree such as `scratch/`, or is a link out of the repository is
-refused by the rule that read it - otherwise the gate could report as verified
-an artifact that exists on one machine and in no checkout.
+outside that directory - in `scratch/`, say, or the gitignored `evidence/drat/` -
+or is a link out of the repository is refused by the rule that read it -
+otherwise the gate could report as verified an artifact that exists on one
+machine and in no checkout.
 
 ## Prior art, credited
 

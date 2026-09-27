@@ -296,7 +296,12 @@ def solve(
     except subprocess.TimeoutExpired as expired:
         rc = None
         timed_out = True
-        stdout = expired.stdout.decode("utf-8", "replace") if expired.stdout else ""
+        # The output read before the kill is bytes on POSIX even under
+        # text=True, but Windows collects it through the text-mode pipe and
+        # hands back a str. kissat flushes its banner at start-up, so a timeout
+        # on the development machine always has some.
+        partial = expired.stdout or ""
+        stdout = partial.decode("utf-8", "replace") if isinstance(partial, bytes) else partial
     wall = time.monotonic() - clock
     finished = datetime.now(UTC)
 
